@@ -26,7 +26,7 @@ impl API for HelloWorld {
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 8)]
 async fn main() {
     let config = AppConfig::new("Hello API", "1.0.0").logging(LoggingConfig::development());
 

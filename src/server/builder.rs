@@ -1,20 +1,21 @@
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 
 use aide::axum::{
-    routing::{delete_with, get_with, patch_with, post_with, put_with},
     ApiRouter,
+    routing::{delete_with, get_with, patch_with, post_with, put_with},
 };
-use axum::http::{HeaderValue, Method, Request, Response};
 use axum::Extension;
+use axum::http::{HeaderValue, Method, Request, Response};
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::trace::{MakeSpan, OnResponse, TraceLayer};
 
 use crate::api::api::API;
 use crate::config::{AppConfig, CorsConfig};
 use crate::context::Context;
-use crate::openapi::{serve_docs, serve_scalar_ui, OpenApiConfig};
+use crate::openapi::{OpenApiConfig, serve_docs, serve_scalar_ui};
 
 /// Custom request span maker that logs essential request information.
 ///
@@ -264,7 +265,7 @@ impl ServerBuilder {
     /// Register an API endpoint with OpenAPI documentation
     pub fn register<E>(mut self, endpoint: E) -> Self
     where
-        E: Metadata + Send + Sync + Clone + 'static,
+        E: Metadata + Send + Sync + 'static,
         E::Req: serde::de::DeserializeOwned + schemars::JsonSchema + Default + Send + 'static,
         E::Res: aide::OperationOutput + axum::response::IntoResponse + Send + 'static,
         // If response is Json<T>, T must implement JsonSchema
@@ -275,23 +276,15 @@ impl ServerBuilder {
         let method = meta.method;
         let summary = meta.summary.unwrap_or("");
 
-        let handler = move |ep: E, axum::Json(payload): axum::Json<E::Req>| {
-            let ep = ep.clone();
-            async move {
-                let ctx = Context {
-                    req: payload,
-                    headers: Default::default(),
-                };
-                ep.handler(ctx).await
-            }
-        };
+        // Wrap endpoint in Arc to avoid cloning on every request
+        let endpoint = Arc::new(endpoint);
 
         let route = match method {
             "get" => {
-                let ep = endpoint.clone();
+                let ep = Arc::clone(&endpoint);
                 get_with(
                     move || {
-                        let ep = ep.clone();
+                        let ep = Arc::clone(&ep);
                         async move {
                             let ctx = Context {
                                 req: E::Req::default(),
@@ -308,10 +301,17 @@ impl ServerBuilder {
                 )
             }
             "post" => {
-                let ep = endpoint.clone();
+                let ep = Arc::clone(&endpoint);
                 post_with(
                     move |axum::Json(payload): axum::Json<E::Req>| {
-                        handler(ep.clone(), axum::Json(payload))
+                        let ep = Arc::clone(&ep);
+                        async move {
+                            let ctx = Context {
+                                req: payload,
+                                headers: Default::default(),
+                            };
+                            ep.handler(ctx).await
+                        }
                     },
                     |op| {
                         op.summary(summary)
@@ -321,10 +321,17 @@ impl ServerBuilder {
                 )
             }
             "put" => {
-                let ep = endpoint.clone();
+                let ep = Arc::clone(&endpoint);
                 put_with(
                     move |axum::Json(payload): axum::Json<E::Req>| {
-                        handler(ep.clone(), axum::Json(payload))
+                        let ep = Arc::clone(&ep);
+                        async move {
+                            let ctx = Context {
+                                req: payload,
+                                headers: Default::default(),
+                            };
+                            ep.handler(ctx).await
+                        }
                     },
                     |op| {
                         op.summary(summary)
@@ -334,10 +341,17 @@ impl ServerBuilder {
                 )
             }
             "delete" => {
-                let ep = endpoint.clone();
+                let ep = Arc::clone(&endpoint);
                 delete_with(
                     move |axum::Json(payload): axum::Json<E::Req>| {
-                        handler(ep.clone(), axum::Json(payload))
+                        let ep = Arc::clone(&ep);
+                        async move {
+                            let ctx = Context {
+                                req: payload,
+                                headers: Default::default(),
+                            };
+                            ep.handler(ctx).await
+                        }
                     },
                     |op| {
                         op.summary(summary)
@@ -347,10 +361,17 @@ impl ServerBuilder {
                 )
             }
             "patch" => {
-                let ep = endpoint.clone();
+                let ep = Arc::clone(&endpoint);
                 patch_with(
                     move |axum::Json(payload): axum::Json<E::Req>| {
-                        handler(ep.clone(), axum::Json(payload))
+                        let ep = Arc::clone(&ep);
+                        async move {
+                            let ctx = Context {
+                                req: payload,
+                                headers: Default::default(),
+                            };
+                            ep.handler(ctx).await
+                        }
                     },
                     |op| {
                         op.summary(summary)
@@ -360,10 +381,17 @@ impl ServerBuilder {
                 )
             }
             _ => {
-                let ep = endpoint.clone();
+                let ep = Arc::clone(&endpoint);
                 get_with(
                     move |axum::Json(payload): axum::Json<E::Req>| {
-                        handler(ep.clone(), axum::Json(payload))
+                        let ep = Arc::clone(&ep);
+                        async move {
+                            let ctx = Context {
+                                req: payload,
+                                headers: Default::default(),
+                            };
+                            ep.handler(ctx).await
+                        }
                     },
                     |op| {
                         op.summary(summary)

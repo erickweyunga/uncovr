@@ -1,9 +1,9 @@
 [package]
 name = "uncover"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 authors = ["Eric Kweyunga <maverickweyunga@gmail.com>"]
-description = "Modular Rust API framework on top of Axum with procedural macros"
+description = "A web framework that focuses on type safety and automatic API documentation"
 license = "MIT"
 
 [dependencies]
