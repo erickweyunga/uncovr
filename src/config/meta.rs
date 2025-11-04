@@ -341,6 +341,22 @@ pub struct AppConfig {
     /// OpenAPI server URLs
     #[serde(default)]
     pub api_servers: Vec<ApiServer>,
+
+    /// Enable response compression (gzip, brotli)
+    #[serde(default = "default_true")]
+    pub enable_compression: bool,
+
+    /// Maximum number of concurrent connections (None = unlimited)
+    #[serde(default)]
+    pub max_connections: Option<usize>,
+
+    /// TCP keep-alive timeout in seconds (None = disabled)
+    #[serde(default)]
+    pub keep_alive_timeout: Option<u64>,
+
+    /// Connection timeout in seconds
+    #[serde(default = "default_connection_timeout")]
+    pub connection_timeout: u64,
 }
 
 /// OpenAPI server configuration
@@ -356,6 +372,10 @@ fn default_bind_address() -> String {
 
 fn default_true() -> bool {
     true
+}
+
+fn default_connection_timeout() -> u64 {
+    30
 }
 
 impl Default for AppConfig {
@@ -374,6 +394,10 @@ impl Default for AppConfig {
                 url: "http://localhost:3000".to_string(),
                 description: "Local development".to_string(),
             }],
+            enable_compression: true,
+            max_connections: None,
+            keep_alive_timeout: Some(60),
+            connection_timeout: 30,
         }
     }
 }
@@ -457,6 +481,30 @@ impl AppConfig {
     pub fn is_production(&self) -> bool {
         self.environment == Environment::Production
     }
+
+    /// Enable or disable response compression
+    pub fn compression(mut self, enable: bool) -> Self {
+        self.enable_compression = enable;
+        self
+    }
+
+    /// Set maximum concurrent connections
+    pub fn max_connections(mut self, max: usize) -> Self {
+        self.max_connections = Some(max);
+        self
+    }
+
+    /// Set TCP keep-alive timeout in seconds
+    pub fn keep_alive_timeout(mut self, timeout: u64) -> Self {
+        self.keep_alive_timeout = Some(timeout);
+        self
+    }
+
+    /// Set connection timeout in seconds
+    pub fn connection_timeout(mut self, timeout: u64) -> Self {
+        self.connection_timeout = timeout;
+        self
+    }
 }
 
 #[cfg(test)]
@@ -476,7 +524,7 @@ mod tests {
         let config = AppConfig::new("My API", "1.0.0")
             .environment(Environment::Production)
             .cors(CorsConfig::production(vec![
-                "https://example.com".to_string()
+                "https://example.com".to_string(),
             ]));
 
         assert_eq!(config.environment, Environment::Production);

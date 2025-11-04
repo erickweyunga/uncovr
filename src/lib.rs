@@ -214,13 +214,15 @@ pub mod routing {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::prelude::*;
 
     #[test]
     fn context_creation() {
         let ctx = Context {
             req: "request".to_string(),
-            headers: HeaderMap::new(),
+            headers: Arc::new(HeaderMap::new()),
         };
         assert_eq!(ctx.req, "request");
     }

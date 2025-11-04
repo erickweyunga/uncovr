@@ -4,11 +4,14 @@
 //! and headers, providing a consistent interface for endpoint handlers.
 
 use axum::http::HeaderMap;
+use std::sync::Arc;
 
 /// Request context passed to API handlers.
 ///
 /// Contains the deserialized request body and HTTP headers,
 /// providing access to all request information needed by handlers.
+///
+/// Headers are wrapped in `Arc` for zero-copy sharing across async tasks.
 ///
 /// # Type Parameters
 ///
@@ -38,7 +41,7 @@ use axum::http::HeaderMap;
 ///         // Access request body
 ///         let name = &ctx.req.name;
 ///
-///         // Access headers
+///         // Access headers (zero-copy via Arc)
 ///         let user_agent = ctx.headers
 ///             .get("user-agent")
 ///             .and_then(|v| v.to_str().ok())
@@ -48,11 +51,10 @@ use axum::http::HeaderMap;
 ///     }
 /// }
 /// ```
-#[derive(Clone)]
 pub struct Context<Req = ()> {
     /// The deserialized request body
     pub req: Req,
 
-    /// HTTP request headers
-    pub headers: HeaderMap,
+    /// HTTP request headers (zero-copy via Arc)
+    pub headers: Arc<HeaderMap>,
 }

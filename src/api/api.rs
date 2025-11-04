@@ -69,7 +69,9 @@ pub trait API {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::http::HeaderMap;
     use serde::{Deserialize, Serialize};
+    use std::sync::Arc;
 
     #[derive(Default, Deserialize)]
     struct TestRequest {
@@ -102,7 +104,7 @@ mod tests {
             req: TestRequest {
                 message: "hello".into(),
             },
-            headers: axum::http::HeaderMap::new(),
+            headers: Arc::new(HeaderMap::new()),
         };
 
         let response = endpoint.handler(ctx).await;
