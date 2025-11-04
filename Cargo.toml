@@ -1,0 +1,52 @@
+[package]
+name = "uncover"
+version = "0.1.0"
+edition = "2021"
+authors = ["Eric Kweyunga <maverickweyunga@gmail.com>"]
+description = "Modular Rust API framework on top of Axum with procedural macros"
+license = "MIT"
+
+[dependencies]
+tokio = { version = "1.35", features = ["full"] }
+async-trait = "0.1.77"
+
+# Core dependencies
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Logging dependencies
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+
+# HTTP & Server dependencies
+axum = { version = "0.7.4", features = [
+    "json",
+    "query",
+    "multipart",
+    "matched-path",
+    "original-uri"
+], optional = false }
+http = "1.0"
+tower = "0.4.13"
+tower-http = { version = "0.5.0", features = ["cors", "trace"] }
+tower-layer = "0.3.2"
+tower-service = "0.3.2"
+
+# OpenAPI dependencies (always enabled)
+aide = { version = "0.13.0", default-features = false, features = ["axum", "macros", "redoc", "scalar"] }
+schemars = { version = "0.8.16", features = ["derive"] }
+
+[dev-dependencies]
+pretty_env_logger = "0.5.0"
+
+[features]
+default = ["cors", "logging"]
+cors = ["tower-http/cors"]
+logging = ["tower-http/trace"]
+
+[workspace]
+members = [
+    ".",
+    "examples/hello-api"
+]
+resolver = "2"

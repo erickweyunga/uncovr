@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>API Documentation</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AA">
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+      }
+      #app {
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <!-- Load Scalar API Reference -->
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+
+    <!-- Initialize API Reference -->
+    <script>
+      Scalar.createApiReference('#app', {
+        spec: {
+          url: '/openapi.json'
+        },
+        theme: {
+          colors: {
+            primary: {
+              main: '#1E40AF'
+            }
+          }
+        },
+        layout: 'modern'
+      });
+    </script>
+  </body>
+</html>
