@@ -2,15 +2,14 @@
 
 The simplest possible Uncover API - returns "Hello, World!" from a single GET endpoint.
 
-## What This Example Shows
-
-- Minimal endpoint definition
-- Basic configuration setup
-- Simple text response (no JSON needed)
-
-## Running
+## Getting Started
 
 ```bash
+# Clone the repository
+git clone https://github.com/erickweyunga/uncover.git
+cd uncover/examples/hello-api
+
+# Run the example
 cargo run
 ```
 
@@ -25,6 +24,12 @@ curl http://localhost:3000/
 # View API documentation
 open http://localhost:3000/docs
 ```
+
+## What This Example Shows
+
+- Minimal endpoint definition
+- Basic configuration setup
+- Simple text response (no JSON needed)
 
 ## Code Overview
 

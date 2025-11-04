@@ -7,4 +7,3 @@ edition = "2021"
 uncover = { path = "../.." }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.35", features = ["full"] }
-schemars = { version = "0.8.16", features = ["derive"] }
