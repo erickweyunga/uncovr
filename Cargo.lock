@@ -1184,7 +1184,7 @@ dependencies = [
 
 [[package]]
 name = "uncovr"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "aide",
  "async-trait",
