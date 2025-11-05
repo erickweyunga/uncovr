@@ -1,5 +1,5 @@
 use serde::Serialize;
-use uncover::prelude::*;
+use uncovr::prelude::*;
 
 #[derive(Clone)]
 pub struct Hello;

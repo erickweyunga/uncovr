@@ -13,7 +13,7 @@
 //! # Quick Start
 //!
 //! ```no_run
-//! use uncover::prelude::*;
+//! use uncovr::prelude::*;
 //! use serde::{Deserialize, Serialize};
 //!
 //! #[derive(Default, Deserialize, JsonSchema)]
@@ -55,7 +55,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     use uncover::server::Server;
+//!     use uncovr::server::Server;
 //!
 //!     let config = AppConfig::new("My API", "1.0.0")
 //!         .description("A simple API built with Uncover")

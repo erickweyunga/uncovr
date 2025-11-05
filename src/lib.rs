@@ -11,7 +11,7 @@
 //! ## Quick Start
 //!
 //! ```no_run
-//! use uncover::prelude::*;
+//! use uncovr::prelude::*;
 //! use serde::{Deserialize, Serialize};
 //!
 //! // Define request and response types
@@ -58,7 +58,7 @@
 //!     let config = AppConfig::new("My API", "1.0.0")
 //!         .logging(LoggingConfig::development());
 //!
-//!     uncover::server::Server::new()
+//!     uncovr::server::Server::new()
 //!         .with_config(config)
 //!         .register(CreateUserEndpoint)
 //!         .serve()
@@ -84,7 +84,7 @@
 //! Create a `meta.rs` file to configure your application:
 //!
 //! ```rust
-//! use uncover::prelude::*;
+//! use uncovr::prelude::*;
 //!
 //! pub fn config() -> AppConfig {
 //!     AppConfig::new("My API", "1.0.0")
@@ -101,7 +101,7 @@
 //! Endpoints implement two traits: `Metadata` for routing info and `API` for handler logic:
 //!
 //! ```rust
-//! use uncover::prelude::*;
+//! use uncovr::prelude::*;
 //! use serde::{Deserialize, Serialize};
 //!
 //! #[derive(Clone)]
@@ -139,7 +139,7 @@
 //!
 //! ## Modules
 //!
-//! - [`prelude`] - Commonly used types and traits (import with `use uncover::prelude::*`)
+//! - [`prelude`] - Commonly used types and traits (import with `use uncovr::prelude::*`)
 //! - [`server`] - Server builder and routing functionality
 //! - [`api`] - Core API traits and types
 //! - [`config`] - Configuration types for logging, CORS, and application settings
@@ -157,7 +157,7 @@
 //! Uncover includes built-in structured logging:
 //!
 //! ```rust
-//! use uncover::config::{LoggingConfig, LogLevel, LogFormat};
+//! use uncovr::config::{LoggingConfig, LogLevel, LogFormat};
 //!
 //! // Development: verbose, pretty output
 //! let dev_logging = LoggingConfig::development();
@@ -177,7 +177,7 @@
 //! Configure CORS based on your environment:
 //!
 //! ```rust
-//! use uncover::config::CorsConfig;
+//! use uncovr::config::CorsConfig;
 //!
 //! // Development: allow all origins
 //! let dev_cors = CorsConfig::development();
@@ -221,7 +221,7 @@ pub mod openapi;
 
 /// Commonly used types and traits.
 ///
-/// Import everything you need with `use uncover::prelude::*;`
+/// Import everything you need with `use uncovr::prelude::*;`
 pub mod prelude;
 
 /// Server builder and routing functionality.

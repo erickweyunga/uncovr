@@ -5,7 +5,7 @@ use aide::openapi::{Info, OpenApi, Server as OpenApiServer};
 /// # Example
 ///
 /// ```no_run
-/// use uncover::openapi::OpenApiConfig;
+/// use uncovr::openapi::OpenApiConfig;
 ///
 /// let config = OpenApiConfig::new("My API", "1.0.0")
 ///     .description("A comprehensive API")
@@ -37,7 +37,7 @@ impl OpenApiConfig {
     /// # Example
     ///
     /// ```
-    /// use uncover::openapi::OpenApiConfig;
+    /// use uncovr::openapi::OpenApiConfig;
     ///
     /// let config = OpenApiConfig::new("My API", "1.0.0");
     /// ```

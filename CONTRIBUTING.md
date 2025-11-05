@@ -1,6 +1,6 @@
-# Contributing to Uncover
+# Contributing to Uncovr
 
-Thank you for your interest in contributing to Uncover! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to Uncovr! This document provides guidelines and instructions for contributing to the project.
 
 ## Code of Conduct
 
@@ -11,7 +11,7 @@ By participating in this project, you agree to maintain a respectful and inclusi
 1. Fork the repository
 2. Clone your fork:
    ```bash
-   git clone https://github.com/erickweyunga/uncover.git
+   git clone https://github.com/erickweyunga/uncovr.git
    cd uncover
    ```
 3. Create a new branch for your feature or fix:
@@ -166,7 +166,7 @@ When adding significant new features:
 When reporting bugs, include:
 
 - Rust version (`rustc --version`)
-- Uncover version
+- Uncovr version
 - Minimal code to reproduce the issue
 - Expected vs actual behavior
 - Error messages or stack traces
@@ -177,4 +177,4 @@ If you have questions about contributing, feel free to open an issue with the "q
 
 ## License
 
-By contributing to Uncover, you agree that your contributions will be licensed under the MIT License.
+By contributing to Uncovr, you agree that your contributions will be licensed under the MIT License.

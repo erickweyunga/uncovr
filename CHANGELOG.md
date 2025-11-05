@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial release of Uncover framework
+- Initial release of Uncovr framework
 - Type-safe API endpoint system with compile-time validation
 - Built-in OpenAPI/Scalar documentation generation
 - Comprehensive configuration system with environment presets (Development, Production, Staging)
@@ -31,4 +31,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2025-11-04
 
 ### Initial Release
-- First working version of Uncover framework
+- First working version of Uncovr framework

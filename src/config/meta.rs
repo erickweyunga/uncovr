@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use uncover::config::{AppConfig, LoggingConfig, CorsConfig, Environment};
+//! use uncovr::config::{AppConfig, LoggingConfig, CorsConfig, Environment};
 //!
 //! let config = AppConfig::new("My API", "1.0.0")
 //!     .description("My awesome API")
@@ -26,7 +26,7 @@ use std::collections::HashMap;
 /// # Examples
 ///
 /// ```rust
-/// use uncover::config::LogLevel;
+/// use uncovr::config::LogLevel;
 ///
 /// let level = LogLevel::Debug;
 /// assert_eq!(level.as_filter(), "debug");
@@ -73,7 +73,7 @@ impl Default for LogLevel {
 /// # Examples
 ///
 /// ```rust
-/// use uncover::config::{LoggingConfig, LogLevel, LogFormat};
+/// use uncovr::config::{LoggingConfig, LogLevel, LogFormat};
 ///
 /// // Development configuration
 /// let dev_config = LoggingConfig::development();
@@ -139,7 +139,7 @@ impl LoggingConfig {
     /// # Examples
     ///
     /// ```rust
-    /// use uncover::config::LoggingConfig;
+    /// use uncovr::config::LoggingConfig;
     ///
     /// let config = LoggingConfig::development();
     /// ```
@@ -533,7 +533,7 @@ mod tests {
         let config = AppConfig::new("My API", "1.0.0")
             .environment(Environment::Production)
             .cors(CorsConfig::production(vec![
-                "https://example.com".to_string()
+                "https://example.com".to_string(),
             ]));
 
         assert_eq!(config.environment, Environment::Production);

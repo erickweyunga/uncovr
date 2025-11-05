@@ -17,7 +17,7 @@ use crate::context::Context;
 /// # Example
 ///
 /// ```rust,no_run
-/// use uncover::prelude::*;
+/// use uncovr::prelude::*;
 /// use serde::{Deserialize, Serialize};
 ///
 /// #[derive(Deserialize, Default)]

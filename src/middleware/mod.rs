@@ -10,7 +10,7 @@
 //! # Example with Custom Middleware
 //!
 //! ```rust,ignore
-//! use uncover::prelude::*;
+//! use uncovr::prelude::*;
 //! use tower_http::timeout::TimeoutLayer;
 //! use std::time::Duration;
 //!

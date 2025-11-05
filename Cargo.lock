@@ -72,7 +72,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "tokio",
- "uncover",
+ "uncovr",
 ]
 
 [[package]]
@@ -1183,7 +1183,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "uncover"
+name = "uncovr"
 version = "0.1.0"
 dependencies = [
  "aide",

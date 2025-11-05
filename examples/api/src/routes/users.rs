@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use tokio::time::{Duration, sleep};
-use uncover::prelude::*;
+use uncovr::prelude::*;
 
 #[derive(Clone)]
 pub struct Users;

@@ -1,6 +1,6 @@
-# Uncover Framework Benchmarks
+# Uncovr Framework Benchmarks
 
-This directory contains benchmarks for the Uncover web framework, measuring performance across various common API scenarios.
+This directory contains benchmarks for the Uncovr web framework, measuring performance across various common API scenarios.
 
 ## Prerequisites
 
@@ -208,7 +208,7 @@ Running "minimal-ping" benchmark
 
 ## Comparing with Other Frameworks
 
-To compare Uncover's performance with raw Axum or other frameworks, you can:
+To compare Uncovr's performance with raw Axum or other frameworks, you can:
 
 1. Run these benchmarks
 2. Adapt the benchmark scenarios to other frameworks

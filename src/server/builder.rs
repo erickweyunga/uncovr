@@ -100,8 +100,8 @@ impl<B> OnResponse<B> for RequestLogger {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use uncover::server::Server;
-/// use uncover::config::AppConfig;
+/// use uncovr::server::Server;
+/// use uncovr::config::AppConfig;
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -150,8 +150,8 @@ impl Server {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use uncover::prelude::*;
-/// use uncover::server::Server;
+/// use uncovr::prelude::*;
+/// use uncovr::server::Server;
 ///
 /// #[derive(Clone)]
 /// struct HelloEndpoint;
@@ -566,8 +566,8 @@ impl ServerBuilder {
     /// # Examples
     ///
     /// ```no_run
-    /// use uncover::prelude::*;
-    /// use uncover::server::Server;
+    /// use uncovr::prelude::*;
+    /// use uncovr::server::Server;
     ///
     /// # #[tokio::main]
     /// # async fn main() {

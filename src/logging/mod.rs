@@ -6,8 +6,8 @@
 //! # Examples
 //!
 //! ```rust
-//! use uncover::logging;
-//! use uncover::config::LoggingConfig;
+//! use uncovr::logging;
+//! use uncovr::config::LoggingConfig;
 //!
 //! // Initialize logging (usually done automatically by the server)
 //! let config = LoggingConfig::development();
@@ -19,7 +19,7 @@
 //! ```
 
 use crate::config::{LogFormat, LoggingConfig};
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Initialize the logging system based on configuration.
 ///
@@ -41,7 +41,7 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 /// # Examples
 ///
 /// ```rust
-/// use uncover::{logging, config::{LoggingConfig, LogLevel, LogFormat}};
+/// use uncovr::{logging, config::{LoggingConfig, LogLevel, LogFormat}};
 ///
 /// // Development logging
 /// let dev_config = LoggingConfig::development();
@@ -96,7 +96,7 @@ pub fn init(config: &LoggingConfig) {
 /// # Examples
 ///
 /// ```rust
-/// use uncover::request_span;
+/// use uncovr::request_span;
 ///
 /// let span = request_span!("GET", "/api/users");
 /// let _enter = span.enter();

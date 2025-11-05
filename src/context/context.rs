@@ -20,7 +20,7 @@ use std::sync::Arc;
 /// # Examples
 ///
 /// ```rust
-/// use uncover::prelude::*;
+/// use uncovr::prelude::*;
 /// use serde::Deserialize;
 ///
 /// #[derive(Deserialize, Default)]

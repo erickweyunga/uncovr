@@ -5,8 +5,8 @@
 //! # Example
 //!
 //! ```no_run
-//! use uncover::prelude::*;
-//! use uncover::server::Server;
+//! use uncovr::prelude::*;
+//! use uncovr::server::Server;
 //!
 //! #[derive(Clone)]
 //! pub struct Hello;

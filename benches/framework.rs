@@ -6,8 +6,8 @@ use std::{
     io::BufRead,
     process::{Command, Stdio},
 };
-use uncover::prelude::*;
-use uncover::server::Server;
+use uncovr::prelude::*;
+use uncovr::server::Server;
 
 fn main() {
     if on_ci() {
@@ -802,7 +802,7 @@ impl BenchmarkBuilder {
 
     fn run<F>(self, f: F)
     where
-        F: FnOnce() -> uncover::server::Server,
+        F: FnOnce() -> uncovr::server::Server,
     {
         // support only running some benchmarks with
         // ```

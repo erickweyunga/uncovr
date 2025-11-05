@@ -1,12 +1,12 @@
 # Hello API Example
 
-The simplest possible Uncover API - returns "Hello, World!" from a single GET endpoint.
+The simplest possible Uncovr API - returns "Hello, World!" from a single GET endpoint.
 
 ## Getting Started
 
 ```bash
 # Clone the repository
-git clone https://github.com/erickweyunga/uncover.git
+git clone https://github.com/erickweyunga/uncovr.git
 cd uncover/examples/api
 
 # Run the example

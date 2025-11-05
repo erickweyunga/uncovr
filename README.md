@@ -1,12 +1,12 @@
-# Uncover
+# Uncovr
 
 A modular microbackend framework for building type-safe REST APIs with automatic documentation and minimal boilerplate.
 
-Uncover enables you to build composable, self-contained API modules (microbackends) where each endpoint is an independent, testable unit. Perfect for building scalable APIs, microservices, and modular backend systems.
+Uncovr enables you to build composable, self-contained API modules (microbackends) where each endpoint is an independent, testable unit. Perfect for building scalable APIs, microservices, and modular backend systems.
 
-More information about this crate can be found in the [crate documentation](https://docs.rs/uncover).
+More information about this crate can be found in the [crate documentation](https://docs.rs/uncovr).
 
-## Why Uncover?
+## Why Uncovr?
 
 **Microbackend Architecture** - Build APIs as a collection of independent, composable modules. Each endpoint is self-contained with its own types, validation, and documentation.
 
@@ -31,7 +31,7 @@ More information about this crate can be found in the [crate documentation](http
 ## Usage example
 
 ```rust
-use uncover::prelude::*;
+use uncovr::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone)]
@@ -73,10 +73,10 @@ You can find this example as well as other example projects in the [examples dir
 
 ## Configuration
 
-Uncover uses environment-based configuration to make it easy to switch between development and production settings:
+Uncovr uses environment-based configuration to make it easy to switch between development and production settings:
 
 ```rust
-use uncover::prelude::*;
+use uncovr::prelude::*;
 
 pub fn config() -> AppConfig {
     AppConfig::new("My API", "1.0.0")
@@ -90,15 +90,15 @@ pub fn config() -> AppConfig {
 
 ## Examples
 
-The [examples](examples/) folder contains various examples of how to use Uncover. The docs also provide code snippets and examples.
+The [examples](examples/) folder contains various examples of how to use Uncovr. The docs also provide code snippets and examples.
 
 ## Getting Help
 
-You're welcome to open a [discussion](https://github.com/erickweyunga/uncover/discussions) with your question or create an [issue](https://github.com/erickweyunga/uncover/issues) if you encounter problems.
+You're welcome to open a [discussion](https://github.com/erickweyunga/uncovr/discussions) with your question or create an [issue](https://github.com/erickweyunga/uncovr/issues) if you encounter problems.
 
 ## Contributing
 
-Thanks for your help improving the project! We have a [contributing guide](CONTRIBUTING.md) to help you get involved in the Uncover project.
+Thanks for your help improving the project! We have a [contributing guide](CONTRIBUTING.md) to help you get involved in the Uncovr project.
 
 ## License
 
@@ -106,4 +106,4 @@ This project is licensed under the [MIT license](LICENSE).
 
 ## Contribution
 
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in Uncover by you, shall be licensed as MIT, without any additional terms or conditions.
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in Uncovr by you, shall be licensed as MIT, without any additional terms or conditions.

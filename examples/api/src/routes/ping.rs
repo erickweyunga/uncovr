@@ -1,4 +1,4 @@
-use uncover::{
+use uncovr::{
     api::API,
     prelude::{Context, async_trait},
     server::{Endpoint, Metadata},

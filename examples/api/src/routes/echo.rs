@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use uncover::prelude::*;
+use uncovr::prelude::*;
 
 #[derive(Clone)]
 pub struct Echo;

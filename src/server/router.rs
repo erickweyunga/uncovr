@@ -10,7 +10,7 @@ pub trait RouterExt {
     ///
     /// ```no_run
     /// use axum::Router;
-    /// use uncover::server::RouterExt;
+    /// use uncovr::server::RouterExt;
     ///
     /// let router = Router::new()
     ///     .with_cors();
@@ -24,7 +24,7 @@ pub trait RouterExt {
     ///
     /// ```no_run
     /// use axum::Router;
-    /// use uncover::server::RouterExt;
+    /// use uncovr::server::RouterExt;
     ///
     /// let router = Router::new()
     ///     .with_logging();
