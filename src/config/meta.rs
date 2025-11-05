@@ -430,8 +430,6 @@ impl AppConfig {
                 "http://localhost:{}",
                 addr.strip_prefix("0.0.0.0:").unwrap()
             )
-        } else if addr.starts_with("127.0.0.1:") || addr.starts_with("localhost:") {
-            format!("http://{}", addr)
         } else {
             format!("http://{}", addr)
         };
