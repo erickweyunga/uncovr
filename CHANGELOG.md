@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Builder patterns for all configuration types
 - Support for JSON request/response serialization
 - Automatic schema generation with schemars
-- Hello World example demonstrating minimal API setup
+- API example demonstrating minimal API setup
 
 ### Features
 - **Configuration**: Environment-based presets with full customization support
