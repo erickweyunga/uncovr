@@ -11,7 +11,7 @@ documentation = "https://docs.rs/uncover"
 readme = "README.md"
 keywords = ["microbackend", "api", "modular", "openapi", "rest"]
 categories = ["web-programming::http-server", "web-programming", "api-bindings"]
-rust-version = "1.70"
+rust-version = "1.85.0"
 exclude = [
     "examples/",
     "benches/",
