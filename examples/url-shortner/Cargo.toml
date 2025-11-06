@@ -8,4 +8,4 @@ nanoid = "0.4.0"
 once_cell = "1.21.3"
 serde = { version = "1.0.228", features = ["derive"] }
 tokio = "1.48.0"
-uncovr = { version = "0.1.2", path = "../.." }
+uncovr = { version = "0.2.0", path = "../.." }

@@ -313,14 +313,24 @@ impl Endpoint {
     /// Provides direct access to aide's TransformOperation for maximum flexibility.
     ///
     /// # Example
-    /// ```rust
-    /// Endpoint::new("/users", "get")
+    /// ```rust,no_run
+    /// use uncovr::prelude::*;
+    /// use serde::Serialize;
+    /// use schemars::JsonSchema;
+    ///
+    /// #[derive(Serialize, JsonSchema)]
+    /// struct User {
+    ///     id: u64,
+    ///     name: String,
+    /// }
+    ///
+    /// let endpoint = Endpoint::new("/users", "get")
     ///     .summary("Get users")
     ///     .with_responses(|op| {
-    ///         op.response::<200, Vec<User>>()
-    ///           .response::<400, ErrorResponse>()
-    ///           .response::<500, ErrorResponse>()
-    ///     })
+    ///         op.response::<200, Json<Vec<User>>>()
+    ///           .response::<400, Json<ErrorResponse>>()
+    ///           .response::<500, Json<ErrorResponse>>()
+    ///     });
     /// ```
     pub fn with_responses<F>(mut self, callback: F) -> Self
     where

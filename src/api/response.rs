@@ -19,18 +19,46 @@ use serde::Serialize;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use uncovr::prelude::*;
+/// use serde::{Serialize, Deserialize};
+/// use schemars::JsonSchema;
 ///
-/// async fn handler(&self, ctx: Context<Self::Req>) -> ApiResponse<User> {
-///     if ctx.req.id == 0 {
-///         return ApiResponse::BadRequest {
-///             code: "invalid_id",
-///             message: "ID must be greater than 0",
-///         };
+/// #[derive(Serialize, Deserialize, JsonSchema, Default)]
+/// struct UserRequest {
+///     id: u64,
+/// }
+///
+/// #[derive(Serialize, JsonSchema)]
+/// struct User {
+///     id: u64,
+///     name: String,
+/// }
+///
+/// #[derive(Clone)]
+/// struct GetUserApi;
+///
+/// impl Metadata for GetUserApi {
+///     fn metadata(&self) -> Endpoint {
+///         Endpoint::new("/users/:id", "get")
 ///     }
+/// }
 ///
-///     ApiResponse::Ok(User { id: ctx.req.id, name: "John".into() })
+/// #[async_trait]
+/// impl API for GetUserApi {
+///     type Req = UserRequest;
+///     type Res = ApiResponse<User>;
+///
+///     async fn handler(&self, ctx: Context<Self::Req>) -> ApiResponse<User> {
+///         if ctx.req.id == 0 {
+///             return ApiResponse::BadRequest {
+///                 code: "invalid_id",
+///                 message: "ID must be greater than 0",
+///             };
+///         }
+///
+///         ApiResponse::Ok(User { id: ctx.req.id, name: "John".into() })
+///     }
 /// }
 /// ```
 #[derive(Debug, Clone)]
