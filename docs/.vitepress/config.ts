@@ -36,7 +36,13 @@ export default defineConfig({
       },
       {
         text: "Explanations",
-        items: [{ text: "Routes", link: "/explanations/routes" }],
+        items: [
+          { text: "Routes", link: "/explanations/routes" },
+          {
+            text: "Project Structure",
+            link: "/explanations/project-structure",
+          },
+        ],
       },
     ],
 
