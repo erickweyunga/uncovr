@@ -1,13 +1,13 @@
 # Installation
 
-Get Uncovr up and running in minutes.
+Get Uncovr installed and ready to use.
 
 ## Prerequisites
 
-- Rust 1.70 or later
+- Rust 1.85 or later
 - Cargo (included with Rust)
 
-Install Rust from [rustup.rs](https://rustup.rs/):
+If you don't have Rust installed, get it from [rustup.rs](https://rustup.rs/):
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -15,66 +15,41 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 ## Create a New Project
 
+Start by creating a new Rust project:
+
 ```bash
 cargo new my-api
 cd my-api
 ```
 
-## Add Dependencies
+## Add Uncovr
 
-Add Uncovr to your project `my-api`:
-
-```bash
-cargo add uncovr tokio serde --features derive
-```
-
-## Create Your First Endpoint
-
-Replace `src/main.rs` with:
-
-```rust
-use uncovr::prelude::*;
-
-#[derive(Clone)]
-pub struct HelloWorld;
-
-impl Metadata for HelloWorld {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/", "get").summary("Say hello")
-    }
-}
-
-#[async_trait]
-impl API for HelloWorld {
-    type Req = ();
-    type Res = &'static str;
-
-    async fn handler(&self, _ctx: Context<Self::Req>) -> Self::Res {
-        "Hello, World!"
-    }
-}
-
-#[tokio::main]
-async fn main() {
-    let config = AppConfig::new("Hello API", "1.0.0")
-        .bind("127.0.0.1:3000")
-        .environment(Environment::Development);
-
-    Server::new()
-        .with_config(config)
-        .register(HelloWorld)
-        .serve()
-        .await
-        .expect("Server failed");
-}
-```
-
-## Run Your API
+Add Uncovr to your `Cargo.toml`:
 
 ```bash
-cargo run
+cargo add uncovr
 ```
 
-Visit `http://127.0.0.1:3000` to see your API in action.
+This installs the latest version of Uncovr with default features (CORS and logging).
 
-View auto-generated docs at `http://127.0.0.1:3000/docs`.
+## Add Required Dependencies
+
+Uncovr needs a few additional dependencies:
+
+```bash
+cargo add tokio --features full
+cargo add serde --features derive
+```
+
+- **tokio**: Async runtime (required)
+- **serde**: Serialization for JSON (required)
+
+## Verify Installation
+
+Check that everything is installed:
+
+```bash
+cargo build
+```
+
+If the build succeeds, Uncovr is ready to use.

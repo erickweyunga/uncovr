@@ -1,410 +1,355 @@
 # Uncovr By Example
 
-Learn Uncovr through practical examples, from simple to complex.
+Learn Uncovr by building a complete URL shortener application from scratch.
 
-## Hello World
+::: tip Full Source Code
+The complete example is available on GitHub: [url-shortener example](https://github.com/erickweyunga/uncovr/tree/main/examples/url-shortner)
+:::
 
-The simplest possible Uncovr application:
+## What We're Building
+
+A URL shortener service that:
+- Takes long URLs and creates short codes
+- Redirects short codes to original URLs
+- Validates input and handles errors properly
+- Provides OpenAPI documentation
+
+By the end, you'll understand how to structure real Uncovr applications.
+
+## Project Setup
+
+Create a new project and add dependencies:
+
+```bash
+cargo new url-shortener
+cd url-shortener
+cargo add uncovr tokio serde --features derive
+cargo add nanoid once_cell
+```
+
+## Project Structure
+
+We'll organize our code following Uncovr's recommended pattern:
+
+```
+src/
+├── main.rs          # Server setup
+├── fun.rs           # Helper functions
+└── url/             # URL feature module
+    ├── mod.rs       # Module exports
+    ├── apis.rs      # API definitions
+    └── handlers.rs  # Business logic
+```
+
+This separates concerns: definitions in `apis.rs`, implementation in `handlers.rs`.
+
+## Step 1: Helper Functions
+
+First, create `src/fun.rs` with our URL storage logic:
+
+```rust
+use once_cell::sync::Lazy;
+use std::collections::HashMap;
+use std::sync::Mutex;
+
+// In-memory storage (use a database in production)
+static URL_MAP: Lazy<Mutex<HashMap<String, String>>> = 
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+pub fn shorten_url(base_url: &str, original_url: &str) -> String {
+    let short_code = nanoid::nanoid!(6);
+    
+    URL_MAP
+        .lock()
+        .unwrap()
+        .insert(short_code.clone(), original_url.to_string());
+    
+    format!("{}/{}", base_url, short_code)
+}
+
+pub fn get_original_url(short_code: &str) -> Option<String> {
+    URL_MAP
+        .lock()
+        .unwrap()
+        .get(short_code)
+        .cloned()
+}
+```
+
+::: info Why This Structure?
+We use a global HashMap for simplicity. In production, replace this with a database like PostgreSQL or Redis.
+:::
+
+## Step 2: API Definitions
+
+Create `src/url/apis.rs` to define our API surface:
 
 ```rust
 use uncovr::prelude::*;
 
-#[derive(Clone)]
-pub struct HelloWorld;
+// Request type for shortening URLs
+#[derive(Default, Deserialize, JsonSchema)]
+pub struct UrlRequest {
+    /// The long URL to be shortened
+    pub url: String,
+}
 
-impl Metadata for HelloWorld {
+// Response type with the shortened URL
+#[derive(Serialize, JsonSchema)]
+pub struct UrlResponse {
+    /// The short URL generated for the provided long URL
+    pub short_url: String,
+}
+
+// Empty response type for redirects
+#[derive(Serialize, JsonSchema)]
+pub struct Redirect;
+
+// API endpoint for shortening URLs
+#[derive(Clone)]
+pub struct ShortenUrlApi;
+
+// API endpoint for redirecting to original URLs
+#[derive(Clone)]
+pub struct RedirectUrlApi;
+
+impl Metadata for ShortenUrlApi {
     fn metadata(&self) -> Endpoint {
-        Endpoint::new("/", "get")
-            .summary("Say hello")
+        Endpoint::new("/url", "post")
+            .summary("Shorten a URL")
+            .description("Takes a long URL and returns a shortened version")
+            .with_responses(|op| {
+                op.response::<200, Json<UrlResponse>>()
+                    .response::<400, Json<ErrorResponse>>()
+                    .response::<500, Json<ErrorResponse>>()
+            })
+    }
+}
+
+impl Metadata for RedirectUrlApi {
+    fn metadata(&self) -> Endpoint {
+        Endpoint::new("/:id", "get")
+            .summary("Redirect to the original URL")
+            .description("Redirects to the original URL associated with the given ID")
+            .with_responses(|op| {
+                op.response::<301, Json<Redirect>>()
+                    .response::<404, Json<ErrorResponse>>()
+            })
+    }
+}
+```
+
+::: details Understanding the Code
+
+**Request/Response Types**: Define the shape of data flowing through your API. These automatically generate OpenAPI schemas.
+
+**API Structs**: Each endpoint is a struct. This keeps endpoints independent and testable.
+
+**Metadata Implementation**: Tells Uncovr:
+- The route path (`/url`, `/:id`)
+- The HTTP method (`post`, `get`)
+- Documentation (summary, description)
+- Expected responses (with `with_responses()`)
+
+The `with_responses()` method documents what your API returns, making your OpenAPI docs complete and accurate.
+:::
+
+## Step 3: Business Logic
+
+Create `src/url/handlers.rs` with the actual implementation:
+
+```rust
+use crate::{
+    fun,
+    url::apis::{RedirectUrlApi, ShortenUrlApi, UrlRequest, UrlResponse},
+};
+use uncovr::prelude::*;
+
+#[async_trait]
+impl API for ShortenUrlApi {
+    type Req = UrlRequest;
+    type Res = ApiResponse<UrlResponse>;
+
+    async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
+        // Validate URL is not empty
+        if ctx.req.url.is_empty() {
+            return ApiResponse::BadRequest {
+                code: "empty_url",
+                message: "URL cannot be empty",
+            };
+        }
+
+        // Validate URL format
+        if !ctx.req.url.starts_with("http://") && !ctx.req.url.starts_with("https://") {
+            return ApiResponse::BadRequest {
+                code: "invalid_url_format",
+                message: "URL must start with http:// or https://",
+            };
+        }
+
+        let base_url = "http://localhost:8000";
+        let original_url = ctx.req.url.clone();
+
+        // Shorten the URL
+        let short_url = fun::shorten_url(base_url, &original_url);
+
+        ApiResponse::Ok(UrlResponse { short_url })
     }
 }
 
 #[async_trait]
-impl API for HelloWorld {
+impl API for RedirectUrlApi {
     type Req = ();
-    type Res = &'static str;
+    type Res = ApiResponse<UrlResponse>;
 
-    async fn handler(&self, _ctx: Context<Self::Req>) -> Self::Res {
-        "Hello, World!"
+    async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
+        let id = ctx.path.get("id").unwrap_or_default();
+        let url = fun::get_original_url(id);
+
+        match url {
+            Some(url) => ApiResponse::MovedPermanently(url),
+            None => ApiResponse::NotFound {
+                code: "url_not_found",
+                message: "URL not found",
+            },
+        }
     }
 }
+```
+
+::: details Understanding the Handler
+
+**Validation**: Always validate input early. Return `BadRequest` for invalid data.
+
+**Error Codes**: Use descriptive codes like `empty_url` and `invalid_url_format`. These help clients handle specific errors.
+
+**Path Parameters**: Extract with `ctx.path.get("id")`. The router automatically captures values from the URL.
+
+**Response Types**:
+- `ApiResponse::Ok` - Success with data (200)
+- `ApiResponse::BadRequest` - Client error (400)
+- `ApiResponse::NotFound` - Resource not found (404)
+- `ApiResponse::MovedPermanently` - Redirect (301)
+
+Each response type maps to the correct HTTP status code automatically.
+:::
+
+## Step 4: Module Exports
+
+Create `src/url/mod.rs` to export the module:
+
+```rust
+pub mod apis;
+pub mod handlers;
+```
+
+## Step 5: Server Setup
+
+Finally, wire everything together in `src/main.rs`:
+
+```rust
+use uncovr::{prelude::*, server::Server};
+
+use crate::url::apis::{RedirectUrlApi, ShortenUrlApi};
+
+mod fun;
+mod url;
 
 #[tokio::main]
 async fn main() {
-    let config = AppConfig::new("Hello API", "1.0.0");
+    let config = AppConfig::new("URL SHORTENER API", "0.1.0")
+        .bind("0.0.0.0:8000")
+        .environment(Environment::Development);
 
     Server::new()
         .with_config(config)
-        .register(HelloWorld)
+        .register(ShortenUrlApi)
+        .register(RedirectUrlApi)
         .serve()
         .await
-        .expect("Server failed");
+        .expect("Something went wrong while starting Url Shortner Server")
 }
 ```
 
-**What's happening:**
-- We define an endpoint struct `HelloWorld`
-- Implement `Metadata` to specify the route (`/`) and HTTP method (`get`)
-- Implement `API` to define request/response types and handler logic
-- Register the endpoint with the server and start it
+::: tip Configuration
+- `bind()` - Sets the address and port
+- `environment()` - Development mode enables detailed logging
+- `register()` - Adds endpoints to the server
 
-## JSON Request and Response
+The order of `register()` calls doesn't matter. The router handles all routing automatically.
+:::
 
-Handle JSON data with automatic serialization:
+## Running the Application
 
-```rust
-use uncovr::prelude::*;
-use serde::{Deserialize, Serialize};
+Start the server:
 
-#[derive(Default, Deserialize, JsonSchema)]
-pub struct GreetRequest {
-    name: String,
-}
-
-#[derive(Serialize, JsonSchema)]
-pub struct GreetResponse {
-    message: String,
-}
-
-#[derive(Clone)]
-pub struct Greet;
-
-impl Metadata for Greet {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/greet", "post")
-            .summary("Greet a user")
-    }
-}
-
-#[async_trait]
-impl API for Greet {
-    type Req = GreetRequest;
-    type Res = Json<GreetResponse>;
-
-    async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
-        Json(GreetResponse {
-            message: format!("Hello, {}!", ctx.req.name),
-        })
-    }
-}
-```
-
-**Test it:**
 ```bash
-curl -X POST http://localhost:3000/greet \
+cargo run
+```
+
+Visit `http://localhost:8000/docs` to see your interactive API documentation.
+
+## Testing the API
+
+**Shorten a URL:**
+
+```bash
+curl -X POST http://localhost:8000/url \
   -H "Content-Type: application/json" \
-  -d '{"name":"Alice"}'
+  -d '{"url":"https://github.com/erickweyunga/uncovr"}'
 ```
 
-**Response:**
+Response:
 ```json
-{"message":"Hello, Alice!"}
-```
-
-## Path Parameters
-
-Extract parameters from the URL path:
-
-```rust
-use uncovr::prelude::*;
-use serde::{Deserialize, Serialize};
-
-#[derive(Default, Deserialize, JsonSchema)]
-pub struct GetUserRequest {
-    id: u64,
-}
-
-#[derive(Serialize, JsonSchema)]
-pub struct User {
-    id: u64,
-    name: String,
-}
-
-#[derive(Clone)]
-pub struct GetUser;
-
-impl Metadata for GetUser {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/users/:id", "get")
-            .summary("Get a user by ID")
-    }
-}
-
-#[async_trait]
-impl API for GetUser {
-    type Req = GetUserRequest;
-    type Res = Json<User>;
-
-    async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
-        Json(User {
-            id: ctx.req.id,
-            name: format!("User {}", ctx.req.id),
-        })
-    }
+{
+  "short_url": "http://localhost:8000/abc123"
 }
 ```
 
-**Test it:**
+**Use the short URL:**
+
 ```bash
-curl http://localhost:3000/users/42
+curl -L http://localhost:8000/abc123
 ```
 
-## Multiple Endpoints
+The redirect happens automatically, taking you to the original URL.
 
-Register multiple endpoints to build a complete API:
+**Test error handling:**
 
-```rust
-use uncovr::prelude::*;
+```bash
+curl -X POST http://localhost:8000/url \
+  -H "Content-Type: application/json" \
+  -d '{"url":""}'
+```
 
-#[derive(Clone)]
-pub struct ListUsers;
-
-impl Metadata for ListUsers {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/users", "get")
-            .summary("List all users")
-    }
-}
-
-#[async_trait]
-impl API for ListUsers {
-    type Req = ();
-    type Res = Json<Vec<String>>;
-
-    async fn handler(&self, _ctx: Context<Self::Req>) -> Self::Res {
-        Json(vec!["Alice".into(), "Bob".into()])
-    }
-}
-
-#[derive(Clone)]
-pub struct CreateUser;
-
-impl Metadata for CreateUser {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/users", "post")
-            .summary("Create a new user")
-    }
-}
-
-#[async_trait]
-impl API for CreateUser {
-    type Req = CreateUserRequest;
-    type Res = Json<User>;
-
-    async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
-        Json(User {
-            id: 1,
-            name: ctx.req.name,
-        })
-    }
-}
-
-#[tokio::main]
-async fn main() {
-    let config = AppConfig::new("Users API", "1.0.0");
-
-    Server::new()
-        .with_config(config)
-        .register(ListUsers)
-        .register(CreateUser)
-        .serve()
-        .await
-        .expect("Server failed");
+Response:
+```json
+{
+  "code": "empty_url",
+  "message": "URL cannot be empty"
 }
 ```
 
-## Shared State
+## What You Learned
 
-Share state (like database connections) across endpoints:
+**Project Structure**: Organize by feature with separated concerns (`apis.rs` vs `handlers.rs`).
 
-```rust
-use uncovr::prelude::*;
-use std::sync::Arc;
+**Type Safety**: Request and response types catch errors at compile time.
 
-// Your shared state
-#[derive(Clone)]
-pub struct AppState {
-    pub counter: Arc<std::sync::atomic::AtomicU64>,
-}
+**Error Handling**: Structured errors with codes and messages for better client integration.
 
-#[derive(Clone)]
-pub struct GetCount {
-    pub state: AppState,
-}
+**Response Documentation**: `with_responses()` generates complete OpenAPI specs.
 
-impl Metadata for GetCount {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/count", "get")
-            .summary("Get current count")
-    }
-}
+**Path Parameters**: Extract dynamic values from URLs with `ctx.path`.
 
-#[async_trait]
-impl API for GetCount {
-    type Req = ();
-    type Res = String;
+**Redirects**: Use `ApiResponse::MovedPermanently` for URL redirects.
 
-    async fn handler(&self, _ctx: Context<Self::Req>) -> Self::Res {
-        let count = self.state.counter.load(std::sync::atomic::Ordering::Relaxed);
-        format!("Count: {}", count)
-    }
-}
+## Next Steps
 
-#[derive(Clone)]
-pub struct Increment {
-    pub state: AppState,
-}
+- Add a database instead of in-memory storage
+- Implement user authentication
+- Add URL analytics (click tracking)
+- Set expiration dates for short URLs
+- Create a web interface
 
-impl Metadata for Increment {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/increment", "post")
-            .summary("Increment counter")
-    }
-}
-
-#[async_trait]
-impl API for Increment {
-    type Req = ();
-    type Res = String;
-
-    async fn handler(&self, _ctx: Context<Self::Req>) -> Self::Res {
-        let count = self.state.counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        format!("New count: {}", count + 1)
-    }
-}
-
-#[tokio::main]
-async fn main() {
-    let state = AppState {
-        counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-    };
-
-    let config = AppConfig::new("Counter API", "1.0.0");
-
-    Server::new()
-        .with_config(config)
-        .register(GetCount { state: state.clone() })
-        .register(Increment { state })
-        .serve()
-        .await
-        .expect("Server failed");
-}
-```
-
-## Configuration
-
-Configure your app for different environments:
-
-```rust
-use uncovr::prelude::*;
-
-#[tokio::main]
-async fn main() {
-    let config = AppConfig::new("My API", "1.0.0")
-        .description("A production-ready API")
-        .bind("0.0.0.0:8080")
-        .environment(Environment::Production)
-        .logging(LoggingConfig::production())
-        .cors(CorsConfig::production(vec![
-            "https://myapp.com".to_string()
-        ]))
-        .docs(true);
-
-    Server::new()
-        .with_config(config)
-        .register(HelloWorld)
-        .serve()
-        .await
-        .expect("Server failed");
-}
-```
-
-**Development configuration:**
-```rust
-let config = AppConfig::new("My API", "1.0.0")
-    .bind("127.0.0.1:3000")
-    .environment(Environment::Development)
-    .logging(LoggingConfig::development())
-    .cors(CorsConfig::development());
-```
-
-## Error Handling
-
-Return custom errors with proper HTTP status codes:
-
-```rust
-use uncovr::prelude::*;
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, JsonSchema)]
-pub struct ErrorResponse {
-    error: String,
-}
-
-#[derive(Default, Deserialize, JsonSchema)]
-pub struct DivideRequest {
-    a: f64,
-    b: f64,
-}
-
-#[derive(Clone)]
-pub struct Divide;
-
-impl Metadata for Divide {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/divide", "post")
-            .summary("Divide two numbers")
-    }
-}
-
-#[async_trait]
-impl API for Divide {
-    type Req = DivideRequest;
-    type Res = Result<Json<f64>, (StatusCode, Json<ErrorResponse>)>;
-
-    async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
-        if ctx.req.b == 0.0 {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse {
-                    error: "Cannot divide by zero".into(),
-                }),
-            ));
-        }
-
-        Ok(Json(ctx.req.a / ctx.req.b))
-    }
-}
-```
-
-## Accessing Headers
-
-Read request headers in your handler:
-
-```rust
-use uncovr::prelude::*;
-
-#[derive(Clone)]
-pub struct GetAuthInfo;
-
-impl Metadata for GetAuthInfo {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/auth-info", "get")
-            .summary("Get authentication info")
-    }
-}
-
-#[async_trait]
-impl API for GetAuthInfo {
-    type Req = ();
-    type Res = String;
-
-    async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
-        if let Some(auth) = ctx.headers.get("authorization") {
-            format!("Auth header: {:?}", auth)
-        } else {
-            "No auth header found".to_string()
-        }
-    }
-}
-```
+Explore the [complete source code](https://github.com/erickweyunga/uncovr/tree/main/examples/url-shortner) to see the full implementation.
