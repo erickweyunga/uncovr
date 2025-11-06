@@ -42,6 +42,7 @@ export default defineConfig({
             text: "Project Structure",
             link: "/explanations/project-structure",
           },
+          { text: "Responses", link: "/explanations/responses" },
         ],
       },
     ],
