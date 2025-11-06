@@ -5,6 +5,7 @@
 
 // Re-export core traits and types
 pub use crate::api::api::API;
+pub use crate::api::response::{ApiResponse, ErrorDetails};
 pub use crate::config::{AppConfig, CorsConfig, Environment, LogFormat, LogLevel, LoggingConfig};
 pub use crate::context::Context;
 pub use crate::logging;
