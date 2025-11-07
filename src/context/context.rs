@@ -4,6 +4,7 @@
 //! and headers, providing a consistent interface for endpoint handlers.
 
 use axum::http::HeaderMap;
+use http::Extensions;
 use std::sync::Arc;
 
 use crate::server::params::{PathParams, QueryParams};
@@ -89,7 +90,7 @@ pub struct Context<Req = ()> {
     /// The deserialized request body (from JSON for POST/PUT/PATCH)
     pub req: Req,
 
-    /// HTTP request headers (zero-copy via Arc)
+    /// HTTP request headers
     pub headers: Arc<HeaderMap>,
 
     /// Path parameters extracted from the URL (e.g., `:id` in `/users/:id`)
@@ -97,4 +98,7 @@ pub struct Context<Req = ()> {
 
     /// Query parameters from the URL query string (e.g., `?page=1&limit=10`)
     pub query: QueryParams,
+
+    /// Extensions extracted from the request (e.g., authentication tokens)
+    pub extensions: Extensions,
 }

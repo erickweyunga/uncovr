@@ -70,6 +70,7 @@ pub trait API {
 mod tests {
     use super::*;
     use axum::http::HeaderMap;
+    use http::Extensions;
     use serde::{Deserialize, Serialize};
     use std::sync::Arc;
 
@@ -107,6 +108,7 @@ mod tests {
             headers: Arc::new(HeaderMap::new()),
             path: crate::server::PathParams::empty(),
             query: crate::server::QueryParams::empty(),
+            extensions: Extensions::new(),
         };
 
         let response = endpoint.handler(ctx).await;

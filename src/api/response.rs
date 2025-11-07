@@ -85,49 +85,25 @@ pub enum ApiResponse<T> {
 
     // Client error responses (4xx)
     /// 400 Bad Request - Invalid request data
-    BadRequest {
-        code: &'static str,
-        message: &'static str,
-    },
+    BadRequest { code: &'static str, message: String },
     /// 401 Unauthorized - Authentication required
-    Unauthorized {
-        code: &'static str,
-        message: &'static str,
-    },
+    Unauthorized { code: &'static str, message: String },
     /// 403 Forbidden - Insufficient permissions
-    Forbidden {
-        code: &'static str,
-        message: &'static str,
-    },
+    Forbidden { code: &'static str, message: String },
     /// 404 Not Found - Resource doesn't exist
-    NotFound {
-        code: &'static str,
-        message: &'static str,
-    },
+    NotFound { code: &'static str, message: String },
     /// 409 Conflict - Resource conflict
-    Conflict {
-        code: &'static str,
-        message: &'static str,
-    },
+    Conflict { code: &'static str, message: String },
     /// 422 Unprocessable Entity - Validation failed
-    UnprocessableEntity {
-        code: &'static str,
-        message: &'static str,
-    },
+    UnprocessableEntity { code: &'static str, message: String },
     /// Custom client error with error details
     ClientError { status: u16, error: ErrorResponse },
 
     // Server error responses (5xx)
     /// 500 Internal Server Error - Unexpected error
-    InternalError {
-        code: &'static str,
-        message: &'static str,
-    },
+    InternalError { code: &'static str, message: String },
     /// 503 Service Unavailable - Service temporarily unavailable
-    ServiceUnavailable {
-        code: &'static str,
-        message: &'static str,
-    },
+    ServiceUnavailable { code: &'static str, message: String },
     /// Custom server error with error details
     ServerError { status: u16, error: ErrorResponse },
 }

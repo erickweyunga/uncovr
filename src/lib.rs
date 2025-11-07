@@ -255,6 +255,20 @@ pub mod response {
     pub use axum::response::*;
 }
 
+pub mod axum_middleware {
+    //! Middleware types re-exported from Axum.
+    //!
+    //! Middleware allows you to intercept and modify requests and responses.
+    pub use axum::middleware::*;
+}
+
+pub mod tower {
+    //! Middleware types re-exported from Axum.
+    //!
+    //! Middleware allows you to intercept and modify requests and responses.
+    pub use tower::*;
+}
+
 pub mod routing {
     //! Routing utilities re-exported from Axum.
     //!
@@ -266,6 +280,8 @@ pub mod routing {
 mod tests {
     use std::sync::Arc;
 
+    use http::Extensions;
+
     use super::prelude::*;
 
     #[test]
@@ -275,6 +291,7 @@ mod tests {
             headers: Arc::new(HeaderMap::new()),
             path: PathParams::empty(),
             query: QueryParams::empty(),
+            extensions: Extensions::new(),
         };
         assert_eq!(ctx.req, "request");
     }

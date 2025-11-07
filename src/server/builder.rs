@@ -1,8 +1,9 @@
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
+use std::{convert::Infallible, net::SocketAddr};
 use tokio::net::TcpListener;
 
+use aide::OperationIo;
 use aide::axum::{
     ApiRouter,
     routing::{delete_with, get_with, patch_with, post_with, put_with},
@@ -10,9 +11,15 @@ use aide::axum::{
 use aide::openapi::{
     Parameter, ParameterData, ParameterSchemaOrContent, QueryStyle, ReferenceOr, SchemaObject,
 };
-use axum::Extension;
-use axum::http::{HeaderValue, Method, Request, Response};
+use axum::{Extension, async_trait, body::Body};
+use axum::{
+    extract::FromRequestParts,
+    http::{HeaderValue, Method, Request, Response, request::Parts},
+    response::Response as AxumResponse,
+};
+use http::Extensions;
 use schemars::schema::{InstanceType, Schema, SchemaObject as SchemarsSchemaObject};
+use tower::Service;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::trace::{MakeSpan, OnResponse, TraceLayer};
 
@@ -21,6 +28,25 @@ use crate::config::{AppConfig, CorsConfig};
 use crate::context::Context;
 use crate::openapi::{OpenApiConfig, serve_docs, serve_scalar_ui};
 use crate::server::params::{PathParams, QueryParams};
+
+/// Custom extractor for HTTP Extensions.
+///
+/// This extractor allows us to extract the entire Extensions map from the request.
+#[derive(OperationIo)]
+#[aide(input)]
+struct ExtractExtensions(Extensions);
+
+#[async_trait]
+impl<S> FromRequestParts<S> for ExtractExtensions
+where
+    S: Send + Sync,
+{
+    type Rejection = Infallible;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        Ok(ExtractExtensions(parts.extensions.clone()))
+    }
+}
 
 /// Custom request span maker that logs essential request information.
 ///
@@ -433,7 +459,8 @@ impl ServerBuilder {
                     >,
                           axum::extract::Query(query_params): axum::extract::Query<
                         std::collections::HashMap<String, String>,
-                    >| {
+                    >,
+                          ExtractExtensions(ext): ExtractExtensions| {
                         let ep = Arc::clone(&ep);
                         async move {
                             let ctx = Context {
@@ -441,6 +468,7 @@ impl ServerBuilder {
                                 headers: Default::default(),
                                 path: PathParams::new(path_params),
                                 query: QueryParams::new(query_params),
+                                extensions: ext,
                             };
                             ep.handler(ctx).await
                         }
@@ -475,6 +503,7 @@ impl ServerBuilder {
                           axum::extract::Query(query_params): axum::extract::Query<
                         std::collections::HashMap<String, String>,
                     >,
+                          ExtractExtensions(ext): ExtractExtensions,
                           axum::Json(payload): axum::Json<E::Req>| {
                         let ep = Arc::clone(&ep);
                         async move {
@@ -483,6 +512,7 @@ impl ServerBuilder {
                                 headers: Default::default(),
                                 path: PathParams::new(path_params),
                                 query: QueryParams::new(query_params),
+                                extensions: ext,
                             };
                             ep.handler(ctx).await
                         }
@@ -517,6 +547,7 @@ impl ServerBuilder {
                           axum::extract::Query(query_params): axum::extract::Query<
                         std::collections::HashMap<String, String>,
                     >,
+                          ExtractExtensions(ext): ExtractExtensions,
                           axum::Json(payload): axum::Json<E::Req>| {
                         let ep = Arc::clone(&ep);
                         async move {
@@ -525,6 +556,7 @@ impl ServerBuilder {
                                 headers: Default::default(),
                                 path: PathParams::new(path_params),
                                 query: QueryParams::new(query_params),
+                                extensions: ext,
                             };
                             ep.handler(ctx).await
                         }
@@ -559,6 +591,7 @@ impl ServerBuilder {
                           axum::extract::Query(query_params): axum::extract::Query<
                         std::collections::HashMap<String, String>,
                     >,
+                          ExtractExtensions(ext): ExtractExtensions,
                           axum::Json(payload): axum::Json<E::Req>| {
                         let ep = Arc::clone(&ep);
                         async move {
@@ -567,6 +600,7 @@ impl ServerBuilder {
                                 headers: Default::default(),
                                 path: PathParams::new(path_params),
                                 query: QueryParams::new(query_params),
+                                extensions: ext,
                             };
                             ep.handler(ctx).await
                         }
@@ -601,6 +635,7 @@ impl ServerBuilder {
                           axum::extract::Query(query_params): axum::extract::Query<
                         std::collections::HashMap<String, String>,
                     >,
+                          ExtractExtensions(ext): ExtractExtensions,
                           axum::Json(payload): axum::Json<E::Req>| {
                         let ep = Arc::clone(&ep);
                         async move {
@@ -609,6 +644,7 @@ impl ServerBuilder {
                                 headers: Default::default(),
                                 path: PathParams::new(path_params),
                                 query: QueryParams::new(query_params),
+                                extensions: ext,
                             };
                             ep.handler(ctx).await
                         }
@@ -642,7 +678,8 @@ impl ServerBuilder {
                     >,
                           axum::extract::Query(query_params): axum::extract::Query<
                         std::collections::HashMap<String, String>,
-                    >| {
+                    >,
+                          ExtractExtensions(ext): ExtractExtensions| {
                         let ep = Arc::clone(&ep);
                         async move {
                             let ctx = Context {
@@ -650,6 +687,7 @@ impl ServerBuilder {
                                 headers: Default::default(),
                                 path: PathParams::new(path_params),
                                 query: QueryParams::new(query_params),
+                                extensions: ext,
                             };
                             ep.handler(ctx).await
                         }
@@ -852,6 +890,34 @@ impl ServerBuilder {
     /// ```
     pub async fn serve(self) -> Result<(), std::io::Error> {
         self.build().serve().await
+    }
+
+    /// Add a custom middleware layer to the server's router.
+    ///
+    /// This allows adding any Tower-compatible layer, such as logging, compression,
+    /// rate limiting, authentication, etc.
+    ///
+    /// # Example
+    /// ```
+    /// use tower_http::compression::CompressionLayer;
+    /// use uncovr::server::Server;
+    ///
+    /// let server = Server::new()
+    ///     .with_config(AppConfig::new("My API", "1.0.0"))
+    ///     .layer(CompressionLayer::new())
+    ///     .build();
+    /// ```
+    pub fn layer<L>(mut self, layer: L) -> Self
+    where
+        L: tower::Layer<axum::routing::Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request<Body>, Response = AxumResponse, Error = Infallible>
+            + Clone
+            + Send
+            + 'static,
+        <L::Service as Service<Request<Body>>>::Future: Send + 'static,
+    {
+        self.router = self.router.layer(layer);
+        self
     }
 }
 
