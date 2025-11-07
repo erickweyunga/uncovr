@@ -6,6 +6,7 @@ use crate::utils::jwt::{Claims, extract_token_from_header, validate_token};
 #[derive(Clone)]
 pub struct AuthUser {
     pub user_id: i64,
+    #[allow(dead_code)]
     pub email: String,
 }
 

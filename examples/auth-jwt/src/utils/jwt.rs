@@ -49,11 +49,7 @@ pub fn validate_token(token: &str) -> Result<Claims, jsonwebtoken::errors::Error
 
 /// Extract token from Authorization header
 pub fn extract_token_from_header(auth_header: &str) -> Option<&str> {
-    if auth_header.starts_with("Bearer ") {
-        Some(&auth_header[7..])
-    } else {
-        None
-    }
+    auth_header.strip_prefix("Bearer ")
 }
 
 #[cfg(test)]

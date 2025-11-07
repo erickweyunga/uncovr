@@ -131,10 +131,8 @@ pub async fn login_user(state: &AppState, payload: CreateUser) -> ApiResponse<To
 
     match result {
         Ok(Some(user)) => {
-            let verify_password = match verify_password(&payload.password, &user.password) {
-                Ok(true) => true,
-                _ => false,
-            };
+            let verify_password =
+                matches!(verify_password(&payload.password, &user.password), Ok(true));
 
             if !verify_password {
                 return ApiResponse::Unauthorized {
