@@ -41,6 +41,7 @@ export default defineConfig({
             link: "/explanations/project-structure",
           },
           { text: "Responses", link: "/explanations/responses" },
+          { text: "Middleware", link: "/explanations/middleware" },
         ],
       },
     ],

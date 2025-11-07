@@ -60,7 +60,7 @@ All error responses use the same structured format with a code and message:
 ```rust
 ApiResponse::BadRequest {
     code: "invalid_email",
-    message: "Email format is invalid",
+    message: "Email format is invalid".to_string(),
 }
 ```
 
@@ -73,7 +73,7 @@ The `code` is machine-readable (for client error handling). The `message` is hum
 if ctx.req.email.is_empty() {
     return ApiResponse::BadRequest {
         code: "empty_email",
-        message: "Email is required",
+        message: "Email is required".to_string(),
     };
 }
 ```
@@ -83,7 +83,7 @@ if ctx.req.email.is_empty() {
 if !is_authenticated(&ctx) {
     return ApiResponse::Unauthorized {
         code: "auth_required",
-        message: "Authentication required",
+        message: "Authentication required".to_string(),
     };
 }
 ```
@@ -93,7 +93,7 @@ if !is_authenticated(&ctx) {
 if !has_permission(&user, "delete") {
     return ApiResponse::Forbidden {
         code: "insufficient_permissions",
-        message: "You cannot delete this resource",
+        message: "You cannot delete this resource".to_string(),
     };
 }
 ```
@@ -102,7 +102,7 @@ if !has_permission(&user, "delete") {
 ```rust
 ApiResponse::NotFound {
     code: "user_not_found",
-    message: "User not found",
+    message: "User not found".to_string(),
 }
 ```
 
@@ -111,7 +111,7 @@ ApiResponse::NotFound {
 if email_exists(&ctx.req.email) {
     return ApiResponse::Conflict {
         code: "email_taken",
-        message: "Email already registered",
+        message: "Email already registered".to_string(),
     };
 }
 ```
@@ -120,7 +120,7 @@ if email_exists(&ctx.req.email) {
 ```rust
 ApiResponse::UnprocessableEntity {
     code: "validation_failed",
-    message: "Password must be at least 8 characters",
+    message: "Password must be at least 8 characters".to_string(),
 }
 ```
 
@@ -128,7 +128,7 @@ ApiResponse::UnprocessableEntity {
 ```rust
 ApiResponse::InternalError {
     code: "database_error",
-    message: "Failed to process request",
+    message: "Failed to process request".to_string(),
 }
 ```
 
@@ -136,7 +136,7 @@ ApiResponse::InternalError {
 ```rust
 ApiResponse::ServiceUnavailable {
     code: "maintenance",
-    message: "Service under maintenance",
+    message: "Service under maintenance".to_string(),
 }
 ```
 
@@ -160,6 +160,41 @@ ApiResponse::SeeOther(format!("/users/{}", user.id))
 ```
 
 Use `SeeOther` after creating/updating resources to redirect clients to the new resource.
+
+## Dynamic Error Messages
+
+Error messages accept `String`, not `&'static str`. This means you need to convert string literals using `.to_string()`:
+
+```rust
+ApiResponse::BadRequest {
+    code: "invalid_input",
+    message: "Invalid input".to_string(),
+}
+```
+
+**Why String?** Because real error messages often need to be dynamic:
+
+```rust
+// Include dynamic data in error messages
+ApiResponse::NotFound {
+    code: "user_not_found",
+    message: format!("User with ID {} not found", user_id),
+}
+
+ApiResponse::BadRequest {
+    code: "field_too_long",
+    message: format!("Name must be less than {} characters", MAX_LENGTH),
+}
+
+ApiResponse::UnprocessableEntity {
+    code: "validation_failed",
+    message: format!("Invalid email: {}", ctx.req.email),
+}
+```
+
+Use `format!()` when you need to include variables. Use `.to_string()` for static messages. Both create a `String` that ApiResponse needs.
+
+**Don't overthink it**: If your message is always the same, use `.to_string()`. If it changes based on data, use `format!()`.
 
 ## Error Codes: The Pattern
 
@@ -229,14 +264,14 @@ impl API for CreateUserApi {
         if ctx.req.email.is_empty() {
             return ApiResponse::BadRequest {
                 code: "empty_email",
-                message: "Email is required",
+                message: "Email is required".to_string(),
             };
         }
 
         if !is_valid_email(&ctx.req.email) {
             return ApiResponse::UnprocessableEntity {
                 code: "invalid_email",
-                message: "Email format is invalid",
+                message: "Email format is invalid".to_string(),
             };
         }
 
@@ -244,7 +279,7 @@ impl API for CreateUserApi {
         if email_exists(&ctx.req.email) {
             return ApiResponse::Conflict {
                 code: "email_taken",
-                message: "Email already registered",
+                message: "Email already registered".to_string(),
             };
         }
 
@@ -253,7 +288,7 @@ impl API for CreateUserApi {
             Ok(user) => ApiResponse::Created(user),
             Err(_) => ApiResponse::InternalError {
                 code: "create_failed",
-                message: "Failed to create user",
+                message: "Failed to create user".to_string(),
             },
         }
     }
@@ -279,10 +314,16 @@ The `details` field is optional and can contain additional error information. Fo
 **Early returns for validation**:
 ```rust
 if invalid_condition {
-    return ApiResponse::BadRequest { code: "...", message: "..." };
+    return ApiResponse::BadRequest { 
+        code: "...", 
+        message: "...".to_string() 
+    };
 }
 if another_issue {
-    return ApiResponse::UnprocessableEntity { code: "...", message: "..." };
+    return ApiResponse::UnprocessableEntity { 
+        code: "...", 
+        message: "...".to_string() 
+    };
 }
 // Continue with happy path
 ```
@@ -293,7 +334,7 @@ match database_operation() {
     Ok(data) => ApiResponse::Ok(data),
     Err(_) => ApiResponse::InternalError {
         code: "db_error",
-        message: "Database operation failed",
+        message: "Database operation failed".to_string(),
     },
 }
 ```
@@ -304,7 +345,7 @@ match find_user(id) {
     Some(user) => ApiResponse::Ok(user),
     None => ApiResponse::NotFound {
         code: "user_not_found",
-        message: "User not found",
+        message: "User not found".to_string(),
     },
 }
 ```
