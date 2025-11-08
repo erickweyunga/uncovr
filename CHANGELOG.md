@@ -7,7 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.1] - 2025-01-11
+## [0.2.2] - 2025-11-08
+
+### Added
+- **New Endpoint API with separation of concerns**: Complete redesign of endpoint definition
+  - New `Endpoint` trait replaces old `Metadata` trait
+  - Separate `ep()` method for route definition (path, method, parameters)
+  - Separate `docs()` method for optional API documentation
+  - Type-safe HTTP method constructors: `Route::GET()`, `Route::POST()`, `Route::PUT()`, `Route::PATCH()`, `Route::DELETE()`, `Route::OPTIONS()`, `Route::HEAD()`
+  - New `Route` struct for clean route definitions
+  - New `Docs` struct for comprehensive API documentation
+  - Support for `responses()` method in `Docs` for OpenAPI response documentation
+  - Tag support for organizing endpoints in documentation
+  - `HttpMethod` enum for type-safe method handling
+- **Response documentation in Docs**: Moved response configuration into `Docs` struct
+  - `.responses()` method for documenting HTTP status codes and response types
+  - Integrates seamlessly with OpenAPI generation
+- **Re-exported middleware modules**: Added `tower` and `axum_middleware` re-exports to main library
+  - No need for separate dependencies in user code
+  - Access via `uncovr::tower` and `uncovr::axum_middleware`
+- **Auto-detect server URL**: OpenAPI spec now automatically derives server URL from bind address
+  - No hardcoded localhost defaults
+  - Use `add_server()` to explicitly configure custom domains
+  - Supports multiple server environments
+- **Comprehensive migration guide**: Added `docs/MIGRATION_ENDPOINT_API.md` with full migration examples
+
+### Changed
+- **BREAKING**: Removed old `Metadata` trait - use new `Endpoint` trait instead
+- **BREAKING**: Removed old `Endpoint` struct - replaced with new `Route` struct
+- **BREAKING**: HTTP methods now use uppercase constructors (`Route::GET()` instead of `Endpoint::new("/path", "get")`)
+- **BREAKING**: Documentation is now optional via `Option<Docs>` return type
+- **BREAKING**: Response configuration moved from separate callback to `responses()` in `Docs`
+- Updated all 4 examples to use new Endpoint API
+  - `examples/api` - 5 endpoints updated
+  - `examples/auth-jwt` - 4 endpoints with full response docs
+  - `examples/routes` - 3 routing examples
+  - `examples/url-shortner` - 2 endpoints updated
+- Benchmark suite redesigned and reduced by 52% (762 → 364 lines)
+  - 5 focused benchmarks instead of 20+ redundant ones
+  - All benchmarks updated to new API
+  - Clear documentation and structure
+- Complete documentation overhaul
+  - Updated README.md with new API examples
+  - Updated routing tutorial and explanations
+  - Updated by-example guide
+  - All code examples use new Endpoint API
+
+### Performance
+- Maintained excellent performance: ~23,000 req/sec across all benchmarks
+- Sub-5ms average latency
+- No performance regression from API redesign
+
+### Migration
+- See `docs/MIGRATION_ENDPOINT_API.md` for complete migration guide
+- Main changes:
+  - `impl Metadata` → `impl Endpoint`
+  - `fn metadata()` → `fn ep()` and `fn docs()`
+  - `Endpoint::new("/path", "get")` → `Route::GET("/path")`
+  - `.with_responses()` → `.responses()` in `Docs`
+
+## [0.2.1] - 2025-01-8
 
 ### Added
 - **Middleware support via Extensions**: Added `extensions` field to `Context` struct for middleware data access
@@ -68,7 +127,7 @@ To upgrade from 0.1.x to 0.2.0:
    ```rust
    // Old (0.1.x)
    ApiResponse::BadRequest("Invalid input")
-   
+
    // New (0.2.0)
    ApiResponse::BadRequest {
        code: "invalid_input",
@@ -80,7 +139,7 @@ To upgrade from 0.1.x to 0.2.0:
    ```rust
    // Old (0.1.x)
    use uncovr::prelude::ErrorDetails;
-   
+
    // New (0.2.0)
    use uncovr::prelude::ErrorResponse;
    ```

@@ -1,6 +1,6 @@
 [package]
 name = "uncovr"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 authors = ["Eric Kweyunga <maverickweyunga@gmail.com>"]
 description = "A modular microbackend framework for building type-safe REST APIs with automatic OpenAPI documentation and minimal boilerplate"
