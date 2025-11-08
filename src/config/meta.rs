@@ -389,10 +389,7 @@ impl Default for AppConfig {
             logging: LoggingConfig::default(),
             env_vars: HashMap::new(),
             enable_docs: true,
-            api_servers: vec![ApiServer {
-                url: "http://localhost:3000".to_string(),
-                description: "Local development".to_string(),
-            }],
+            api_servers: vec![],
             enable_compression: true,
             max_connections: None,
             keep_alive_timeout: Some(60),
@@ -419,26 +416,11 @@ impl AppConfig {
 
     /// Set the bind address
     ///
-    /// This automatically updates the api_servers list to match the bind address,
-    /// ensuring the OpenAPI documentation shows the correct server URL.
+    /// This does not automatically set api_servers. The server URL will be
+    /// automatically determined from the bind address when building the server
+    /// if no explicit servers are configured.
     pub fn bind(mut self, address: impl Into<String>) -> Self {
-        let addr = address.into();
-        self.bind_address = addr.clone();
-
-        let url = if addr.starts_with("0.0.0.0:") {
-            format!(
-                "http://localhost:{}",
-                addr.strip_prefix("0.0.0.0:").unwrap()
-            )
-        } else {
-            format!("http://{}", addr)
-        };
-
-        self.api_servers = vec![ApiServer {
-            url,
-            description: "Local development".to_string(),
-        }];
-
+        self.bind_address = address.into();
         self
     }
 
@@ -481,7 +463,24 @@ impl AppConfig {
         self
     }
 
-    /// Add an API server URL
+    /// Add an API server URL to the OpenAPI specification.
+    ///
+    /// By default, if no servers are added, the framework will automatically
+    /// derive the server URL from the bind address. Use this method to:
+    /// - Add multiple server environments (dev, staging, prod)
+    /// - Specify a custom domain different from the bind address
+    /// - Add servers with HTTPS schemes
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use uncovr::config::AppConfig;
+    ///
+    /// let config = AppConfig::new("My API", "1.0.0")
+    ///     .bind("0.0.0.0:3000")
+    ///     .add_server("https://api.example.com", "Production")
+    ///     .add_server("https://staging-api.example.com", "Staging");
+    /// ```
     pub fn add_server(mut self, url: impl Into<String>, description: impl Into<String>) -> Self {
         self.api_servers.push(ApiServer {
             url: url.into(),
@@ -562,5 +561,33 @@ mod tests {
         let cors = CorsConfig::production(vec!["https://example.com".to_string()]);
         assert!(!cors.allows_all_origins());
         assert!(cors.allow_credentials);
+    }
+
+    #[test]
+    fn test_default_config_no_servers() {
+        let config = AppConfig::default();
+        assert!(config.api_servers.is_empty());
+    }
+
+    #[test]
+    fn test_bind_does_not_set_servers() {
+        let config = AppConfig::new("Test API", "1.0.0").bind("0.0.0.0:8080");
+
+        assert_eq!(config.bind_address, "0.0.0.0:8080");
+        assert!(config.api_servers.is_empty());
+    }
+
+    #[test]
+    fn test_explicit_server_configuration() {
+        let config = AppConfig::new("Test API", "1.0.0")
+            .bind("0.0.0.0:8080")
+            .add_server("https://api.example.com", "Production")
+            .add_server("https://staging.example.com", "Staging");
+
+        assert_eq!(config.api_servers.len(), 2);
+        assert_eq!(config.api_servers[0].url, "https://api.example.com");
+        assert_eq!(config.api_servers[0].description, "Production");
+        assert_eq!(config.api_servers[1].url, "https://staging.example.com");
+        assert_eq!(config.api_servers[1].description, "Staging");
     }
 }

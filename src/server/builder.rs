@@ -157,7 +157,7 @@ impl Server {
         ServerBuilder::default()
     }
 
-    /// Get the underlying router (useful for benchmarking and testing)
+    /// Consumes the server and returns the underlying router.
     pub fn into_router(self) -> ApiRouter {
         self.router
     }
@@ -413,9 +413,29 @@ impl ServerBuilder {
             let mut openapi_config =
                 OpenApiConfig::new(&config.name, &config.version).description(&config.description);
 
-            // Add servers from config
-            for server in &config.api_servers {
-                openapi_config = openapi_config.server(&server.url, &server.description);
+            // Add servers from config, or use bind address if no servers configured
+            if config.api_servers.is_empty() {
+                // Automatically derive server URL from bind address
+                let server_url = if config.bind_address.starts_with("0.0.0.0:") {
+                    format!(
+                        "http://localhost:{}",
+                        config.bind_address.strip_prefix("0.0.0.0:").unwrap()
+                    )
+                } else if config.bind_address.starts_with("127.0.0.1:")
+                    || config.bind_address.starts_with("localhost:")
+                {
+                    format!("http://{}", config.bind_address)
+                } else {
+                    // For any other address (including domain names), use http://
+                    format!("http://{}", config.bind_address)
+                };
+
+                openapi_config = openapi_config.server(server_url, "API Server");
+            } else {
+                // Use explicitly configured servers
+                for server in &config.api_servers {
+                    openapi_config = openapi_config.server(&server.url, &server.description);
+                }
             }
 
             self.openapi = Some(openapi_config.build());
