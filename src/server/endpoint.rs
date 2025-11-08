@@ -291,6 +291,11 @@ impl Route {
     }
 }
 
+/// Response callback type for configuring OpenAPI responses
+pub type ResponseCallback = Box<
+    dyn FnOnce(aide::transform::TransformOperation) -> aide::transform::TransformOperation + Send,
+>;
+
 /// Documentation for an API endpoint.
 ///
 /// Provides human-readable information about the endpoint for API documentation
@@ -307,12 +312,13 @@ impl Route {
 ///     .tag("users")
 ///     .tag("authentication");
 /// ```
-#[derive(Debug, Clone, Default)]
+#[derive(Default)]
 pub struct Docs {
     pub summary: Option<&'static str>,
     pub description: Option<&'static str>,
     pub tags: Vec<&'static str>,
     pub deprecated: bool,
+    pub response_config: Option<ResponseCallback>,
 }
 
 impl Docs {
@@ -383,6 +389,41 @@ impl Docs {
     /// ```
     pub fn deprecated(mut self) -> Self {
         self.deprecated = true;
+        self
+    }
+
+    /// Configure OpenAPI responses for this endpoint.
+    ///
+    /// This allows you to document different response status codes and their types.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use uncovr::server::endpoint::Docs;
+    /// use uncovr::prelude::*;
+    /// # struct UserResponse;
+    /// # impl schemars::JsonSchema for UserResponse {
+    /// #     fn schema_name() -> String { "UserResponse".to_string() }
+    /// #     fn json_schema(_: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    /// #         schemars::schema::Schema::Bool(true)
+    /// #     }
+    /// # }
+    ///
+    /// let docs = Docs::new()
+    ///     .summary("Get user")
+    ///     .responses(|op| {
+    ///         op.response::<200, Json<UserResponse>>()
+    ///           .response::<404, Json<ErrorResponse>>()
+    ///           .response::<500, Json<ErrorResponse>>()
+    ///     });
+    /// ```
+    pub fn responses<F>(mut self, callback: F) -> Self
+    where
+        F: FnOnce(aide::transform::TransformOperation) -> aide::transform::TransformOperation
+            + Send
+            + 'static,
+    {
+        self.response_config = Some(Box::new(callback));
         self
     }
 }

@@ -1,4 +1,5 @@
 use uncovr::prelude::*;
+use uncovr::server::endpoint::{Docs, Endpoint, Route};
 
 use super::handlers;
 use crate::middleware::AuthUser;
@@ -20,18 +21,26 @@ impl GetUserRouter {
     }
 }
 
-impl Metadata for GetUserRouter {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/user/:id", "get")
-            .summary("Get user by id")
-            .path_param("id")
-            .desc("User ID")
-            .with_responses(|op| {
-                op.response::<200, Json<UserResponse>>()
-                    .response::<400, Json<ErrorResponse>>()
-                    .response::<404, Json<ErrorResponse>>()
-                    .response::<500, Json<ErrorResponse>>()
-            })
+impl Endpoint for GetUserRouter {
+    fn ep(&self) -> Route {
+        let mut route = Route::GET("/user/:id");
+        route.path_param("id").desc("User ID");
+        route
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Get user by ID")
+                .description("Retrieve user information by their unique ID")
+                .tag("users")
+                .responses(|op| {
+                    op.response::<200, Json<UserResponse>>()
+                        .response::<400, Json<ErrorResponse>>()
+                        .response::<404, Json<ErrorResponse>>()
+                        .response::<500, Json<ErrorResponse>>()
+                }),
+        )
     }
 }
 
@@ -70,16 +79,23 @@ impl RegisterEndpoint {
     }
 }
 
-impl Metadata for RegisterEndpoint {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/register", "post")
-            .summary("Register a new user")
-            .description("Create a new user account with email and password")
-            .with_responses(|op| {
-                op.response::<201, Json<UserResponse>>()
-                    .response::<409, Json<ErrorResponse>>()
-                    .response::<500, Json<ErrorResponse>>()
-            })
+impl Endpoint for RegisterEndpoint {
+    fn ep(&self) -> Route {
+        Route::POST("/register")
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Register a new user")
+                .description("Create a new user account with email and password. Returns the created user information.")
+                .tag("authentication")
+                .responses(|op| {
+                    op.response::<201, Json<UserResponse>>()
+                        .response::<409, Json<ErrorResponse>>()
+                        .response::<500, Json<ErrorResponse>>()
+                }),
+        )
     }
 }
 
@@ -108,16 +124,25 @@ impl LoginEndpoint {
     }
 }
 
-impl Metadata for LoginEndpoint {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/login", "post")
-            .summary("Login user")
-            .description("Authenticate user with email and password")
-            .with_responses(|op| {
-                op.response::<200, Json<TokenResponse>>()
-                    .response::<401, Json<ErrorResponse>>()
-                    .response::<500, Json<ErrorResponse>>()
-            })
+impl Endpoint for LoginEndpoint {
+    fn ep(&self) -> Route {
+        Route::POST("/login")
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Login user")
+                .description(
+                    "Authenticate user with email and password. Returns a JWT token on success.",
+                )
+                .tag("authentication")
+                .responses(|op| {
+                    op.response::<200, Json<TokenResponse>>()
+                        .response::<401, Json<ErrorResponse>>()
+                        .response::<500, Json<ErrorResponse>>()
+                }),
+        )
     }
 }
 
@@ -146,19 +171,27 @@ impl WhoAmIEndpoint {
     }
 }
 
-impl Metadata for WhoAmIEndpoint {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/whoami", "get")
-            .summary("Get current user")
-            .description("Get the currently authenticated user's information")
-            .query("user_id")
-            .desc("User ID (temporary - will be replaced with JWT token)")
-            .with_responses(|op| {
-                op.response::<200, Json<UserResponse>>()
-                    .response::<401, Json<ErrorResponse>>()
-                    .response::<404, Json<ErrorResponse>>()
-                    .response::<500, Json<ErrorResponse>>()
-            })
+impl Endpoint for WhoAmIEndpoint {
+    fn ep(&self) -> Route {
+        Route::GET("/whoami")
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Get current user")
+                .description(
+                    "Get the currently authenticated user's information. Requires valid JWT token.",
+                )
+                .tag("users")
+                .tag("authentication")
+                .responses(|op| {
+                    op.response::<200, Json<UserResponse>>()
+                        .response::<401, Json<ErrorResponse>>()
+                        .response::<404, Json<ErrorResponse>>()
+                        .response::<500, Json<ErrorResponse>>()
+                }),
+        )
     }
 }
 

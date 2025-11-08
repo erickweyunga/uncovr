@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tokio::time::{Duration, sleep};
 use uncovr::prelude::*;
+use uncovr::server::endpoint::{Docs, Endpoint, Route};
 
 #[derive(Clone)]
 pub struct Users;
@@ -18,9 +19,18 @@ pub struct User {
     email: String,
 }
 
-impl Metadata for Users {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/users", "post").summary("Create a new user")
+impl Endpoint for Users {
+    fn ep(&self) -> Route {
+        Route::POST("/users")
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Create a new user")
+                .description("Creates a new user account with the provided name and email")
+                .tag("users"),
+        )
     }
 }
 

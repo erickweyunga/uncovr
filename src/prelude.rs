@@ -10,7 +10,8 @@ pub use crate::config::{AppConfig, CorsConfig, Environment, LogFormat, LogLevel,
 pub use crate::context::Context;
 pub use crate::logging;
 pub use crate::server::{
-    Docs, Endpoint, HttpMethod, PathParam, PathParams, QueryParam, QueryParams, Route,
+    Docs, Endpoint, HttpMethod, PathParam, PathParams, QueryParam, QueryParams, ResponseCallback,
+    Route,
 };
 
 // Re-export axum types

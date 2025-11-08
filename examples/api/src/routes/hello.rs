@@ -1,5 +1,6 @@
 use serde::Serialize;
 use uncovr::prelude::*;
+use uncovr::server::endpoint::{Docs, Endpoint, Route};
 
 #[derive(Clone)]
 pub struct Hello;
@@ -9,9 +10,18 @@ pub struct HelloResponse {
     message: String,
 }
 
-impl Metadata for Hello {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/hello", "get").summary("Dynamic hello")
+impl Endpoint for Hello {
+    fn ep(&self) -> Route {
+        Route::GET("/hello")
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Say hello")
+                .description("Returns a friendly greeting message")
+                .tag("greetings"),
+        )
     }
 }
 

@@ -366,6 +366,7 @@ impl ServerBuilder {
         let summary = docs.as_ref().and_then(|d| d.summary).unwrap_or("");
         let description = docs.as_ref().and_then(|d| d.description);
         let tags = docs.as_ref().map(|d| d.tags.clone()).unwrap_or_default();
+        let response_config = docs.and_then(|d| d.response_config);
 
         let endpoint = Arc::new(endpoint);
 
@@ -412,6 +413,11 @@ impl ServerBuilder {
 
                         for tag in &tags {
                             op = op.tag(tag);
+                        }
+
+                        // Apply response config callback if provided
+                        if let Some(callback) = response_config {
+                            op = callback(op);
                         }
 
                         op
@@ -462,6 +468,11 @@ impl ServerBuilder {
                             op = op.tag(tag);
                         }
 
+                        // Apply response config callback if provided
+                        if let Some(callback) = response_config {
+                            op = callback(op);
+                        }
+
                         op
                     },
                 )
@@ -508,6 +519,11 @@ impl ServerBuilder {
 
                         for tag in &tags {
                             op = op.tag(tag);
+                        }
+
+                        // Apply response config callback if provided
+                        if let Some(callback) = response_config {
+                            op = callback(op);
                         }
 
                         op
@@ -558,6 +574,11 @@ impl ServerBuilder {
                             op = op.tag(tag);
                         }
 
+                        // Apply response config callback if provided
+                        if let Some(callback) = response_config {
+                            op = callback(op);
+                        }
+
                         op
                     },
                 )
@@ -606,6 +627,11 @@ impl ServerBuilder {
                             op = op.tag(tag);
                         }
 
+                        // Apply response config callback if provided
+                        if let Some(callback) = response_config {
+                            op = callback(op);
+                        }
+
                         op
                     },
                 )
@@ -651,6 +677,11 @@ impl ServerBuilder {
 
                         for tag in &tags {
                             op = op.tag(tag);
+                        }
+
+                        // Apply response config callback if provided
+                        if let Some(callback) = response_config {
+                            op = callback(op);
                         }
 
                         op

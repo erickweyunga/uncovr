@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uncovr::prelude::*;
+use uncovr::server::endpoint::{Docs, Endpoint, Route};
 
 #[derive(Clone)]
 pub struct Large;
@@ -14,9 +15,18 @@ pub struct LargeResponse {
     size: usize,
 }
 
-impl Metadata for Large {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/large", "post").summary("Handle large payload")
+impl Endpoint for Large {
+    fn ep(&self) -> Route {
+        Route::POST("/large")
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Handle large payload")
+                .description("Accepts and processes large binary payloads")
+                .tag("utilities"),
+        )
     }
 }
 

@@ -244,6 +244,16 @@ pub mod routing {
     pub use axum::routing::*;
 }
 
+/// Axum middleware utilities
+pub mod axum_middleware {
+    pub use axum::middleware::*;
+}
+
+/// Tower middleware and service utilities
+pub mod tower {
+    pub use tower::*;
+}
+
 #[cfg(test)]
 mod tests {
     use crate::context::Context;
