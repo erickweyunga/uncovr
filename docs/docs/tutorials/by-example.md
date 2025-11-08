@@ -86,6 +86,7 @@ Create `src/url/apis.rs` to define our API surface:
 
 ```rust
 use uncovr::prelude::*;
+use uncovr::server::endpoint::{Endpoint, Route, Docs};
 
 // Request type for shortening URLs
 #[derive(Default, Deserialize, JsonSchema)]
@@ -113,28 +114,44 @@ pub struct ShortenUrlApi;
 #[derive(Clone)]
 pub struct RedirectUrlApi;
 
-impl Metadata for ShortenUrlApi {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/url", "post")
-            .summary("Shorten a URL")
-            .description("Takes a long URL and returns a shortened version")
-            .with_responses(|op| {
-                op.response::<200, Json<UrlResponse>>()
-                    .response::<400, Json<ErrorResponse>>()
-                    .response::<500, Json<ErrorResponse>>()
-            })
+impl Endpoint for ShortenUrlApi {
+    fn ep(&self) -> Route {
+        Route::POST("/url")
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Shorten a URL")
+                .description("Takes a long URL and returns a shortened version")
+                .tag("urls")
+                .responses(|op| {
+                    op.response::<200, Json<UrlResponse>>()
+                        .response::<400, Json<ErrorResponse>>()
+                        .response::<500, Json<ErrorResponse>>()
+                })
+        )
     }
 }
 
-impl Metadata for RedirectUrlApi {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/:id", "get")
-            .summary("Redirect to the original URL")
-            .description("Redirects to the original URL associated with the given ID")
-            .with_responses(|op| {
-                op.response::<301, Json<Redirect>>()
-                    .response::<404, Json<ErrorResponse>>()
-            })
+impl Endpoint for RedirectUrlApi {
+    fn ep(&self) -> Route {
+        let mut route = Route::GET("/:id");
+        route.path_param("id").desc("The short URL identifier");
+        route
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Redirect to original URL")
+                .description("Redirects to the original URL associated with the given short URL ID")
+                .tag("urls")
+                .responses(|op| {
+                    op.response::<301, Json<Redirect>>()
+                        .response::<404, Json<ErrorResponse>>()
+                })
+        )
     }
 }
 ```
@@ -145,13 +162,23 @@ impl Metadata for RedirectUrlApi {
 
 **API Structs**: Each endpoint is a struct. This keeps endpoints independent and testable.
 
-**Metadata Implementation**: Tells Uncovr:
-- The route path (`/url`, `/:id`)
-- The HTTP method (`post`, `get`)
-- Documentation (summary, description)
-- Expected responses (with `with_responses()`)
+**New Endpoint Trait**: The endpoint definition is split into two parts:
 
-The `with_responses()` method documents what your API returns, making your OpenAPI docs complete and accurate.
+1. **`ep()` - Route Definition**: Technical routing information
+   - HTTP method via `Route::POST()`, `Route::GET()`, etc.
+   - Path with parameters
+   - Query and path parameter definitions
+
+2. **`docs()` - Documentation**: Human-readable API documentation
+   - Summary and description
+   - Tags for grouping endpoints
+   - Response status codes via `responses()`
+
+This separation makes your code cleaner and documentation optional for rapid prototyping.
+
+**Type-Safe HTTP Methods**: Notice we use `Route::POST()` and `Route::GET()` instead of strings. This prevents typos at compile time!
+
+**Response Documentation**: The `responses()` method documents what your API returns, making your OpenAPI docs complete and accurate.
 :::
 
 ## Step 3: Business Logic
@@ -267,7 +294,7 @@ async fn main() {
         .register(RedirectUrlApi)
         .serve()
         .await
-        .expect("Something went wrong while starting Url Shortner Server")
+        .expect("Something went wrong while starting Url Shortener Server")
 }
 ```
 
@@ -332,17 +359,59 @@ Response:
 
 ## What You Learned
 
+**Separation of Concerns**: The new Endpoint API separates routing (`ep()`) from documentation (`docs()`). This makes code cleaner and more maintainable.
+
+**Type-Safe HTTP Methods**: Using `Route::GET()`, `Route::POST()`, etc. prevents typos and improves IDE support.
+
 **Project Structure**: Organize by feature with separated concerns (`apis.rs` vs `handlers.rs`).
 
 **Type Safety**: Request and response types catch errors at compile time.
 
 **Error Handling**: Structured errors with codes and messages for better client integration.
 
-**Response Documentation**: `with_responses()` generates complete OpenAPI specs.
+**Response Documentation**: `responses()` generates complete OpenAPI specs.
 
 **Path Parameters**: Extract dynamic values from URLs with `ctx.path`.
 
 **Redirects**: Use `ApiResponse::MovedPermanently` for URL redirects.
+
+**Optional Documentation**: You can skip `docs()` during prototyping and add it later.
+
+## Key Differences from Old API
+
+If you're familiar with the previous version of Uncovr, here are the key changes:
+
+**Before:**
+```rust
+impl Metadata for ShortenUrlApi {
+    fn metadata(&self) -> Endpoint {
+        Endpoint::new("/url", "post")  // String-based method
+            .summary("Shorten a URL")
+            .with_responses(|op| { /* ... */ })
+    }
+}
+```
+
+**After:**
+```rust
+impl Endpoint for ShortenUrlApi {
+    fn ep(&self) -> Route {
+        Route::POST("/url")  // Type-safe method
+    }
+    
+    fn docs(&self) -> Option<Docs> {
+        Some(Docs::new()
+            .summary("Shorten a URL")
+            .responses(|op| { /* ... */ }))
+    }
+}
+```
+
+Benefits:
+- ✅ Cleaner separation of routing and documentation
+- ✅ Type-safe HTTP methods
+- ✅ Optional documentation
+- ✅ Better code organization
 
 ## Next Steps
 
@@ -352,4 +421,4 @@ Response:
 - Set expiration dates for short URLs
 - Create a web interface
 
-Explore the [complete source code](https://github.com/erickweyunga/uncovr/tree/main/examples/url-shortner) to see the full implementation.
+Explore the [complete source code](https://github.com/erickweyunga/uncovr/tree/main/examples/url-shortner) to see the full implementation with the new Endpoint API.

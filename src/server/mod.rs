@@ -11,9 +11,13 @@
 //! #[derive(Clone)]
 //! pub struct Hello;
 //!
-//! impl Metadata for Hello {
-//!     fn metadata(&self) -> Endpoint {
-//!         Endpoint::new("/hello", "get")
+//! impl Endpoint for Hello {
+//!     fn ep(&self) -> Route {
+//!         Route::GET("/hello")
+//!     }
+//!
+//!     fn docs(&self) -> Option<Docs> {
+//!         Some(Docs::new().summary("Say hello"))
 //!     }
 //! }
 //!
@@ -41,9 +45,11 @@
 //! ```
 
 mod builder;
+pub mod endpoint;
 pub mod params;
 mod router;
 
-pub use builder::{Endpoint, Metadata, Server, ServerBuilder};
+pub use builder::{Server, ServerBuilder};
+pub use endpoint::{Docs, Endpoint, HttpMethod, PathParam, QueryParam, ResponseCallback, Route};
 pub use params::{PathParams, QueryParams};
 pub use router::RouterExt;

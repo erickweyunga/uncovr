@@ -32,10 +32,15 @@
 //! #[derive(Clone)]
 //! pub struct CreateUserEndpoint;
 //!
-//! impl Metadata for CreateUserEndpoint {
-//!     fn metadata(&self) -> Endpoint {
-//!         Endpoint::new("/users", "post")
+//! impl Endpoint for CreateUserEndpoint {
+//!     fn ep(&self) -> Route {
+//!         Route::POST("/users")
+//!     }
+//!
+//!     fn docs(&self) -> Option<Docs> {
+//!         Some(Docs::new()
 //!             .summary("Create a new user")
+//!             .tag("users"))
 //!     }
 //! }
 //!
@@ -98,9 +103,11 @@
 //!
 //! ## Endpoint Definition
 //!
-//! Endpoints implement two traits: `Metadata` for routing info and `API` for handler logic:
+//! Endpoints implement two traits:
+//! - `Endpoint` for route definition and optional documentation
+//! - `API` for handler logic
 //!
-//! ```rust
+//! ```rust,no_run
 //! use uncovr::prelude::*;
 //! use serde::{Deserialize, Serialize};
 //!
@@ -117,10 +124,17 @@
 //!     message: String,
 //! }
 //!
-//! impl Metadata for MyEndpoint {
-//!     fn metadata(&self) -> Endpoint {
-//!         Endpoint::new("/path", "post")
-//!             .summary("Endpoint description")
+//! impl Endpoint for MyEndpoint {
+//!     fn ep(&self) -> Route {
+//!         Route::POST("/greet")
+//!             .query("lang").desc("Language code")
+//!     }
+//!
+//!     fn docs(&self) -> Option<Docs> {
+//!         Some(Docs::new()
+//!             .summary("Greet a user")
+//!             .description("Returns a personalized greeting")
+//!             .tag("greetings"))
 //!     }
 //! }
 //!
@@ -135,6 +149,20 @@
 //!         })
 //!     }
 //! }
+//! ```
+//!
+//! ## HTTP Methods
+//!
+//! Use uppercase constructors for type-safe HTTP methods:
+//!
+//! ```rust
+//! use uncovr::server::endpoint::Route;
+//!
+//! let get_route = Route::GET("/users");
+//! let post_route = Route::POST("/users");
+//! let put_route = Route::PUT("/users/:id");
+//! let delete_route = Route::DELETE("/users/:id");
+//! let patch_route = Route::PATCH("/users/:id");
 //! ```
 //!
 //! ## Modules
@@ -171,139 +199,75 @@
 //!     .log_requests(true);
 //! ```
 //!
-//! ## CORS
+//! ## OpenAPI Documentation
 //!
-//! Configure CORS based on your environment:
+//! ```no_run
+//! use uncovr::openapi::OpenApiConfig;
 //!
-//! ```rust
-//! use uncovr::config::CorsConfig;
-//!
-//! // Development: allow all origins
-//! let dev_cors = CorsConfig::development();
-//!
-//! // Production: specific origins only
-//! let prod_cors = CorsConfig::production(vec![
-//!     "https://yourdomain.com".to_string()
-//! ]);
+//! let openapi = OpenApiConfig::new("My API", "1.0.0")
+//!     .description("A comprehensive API")
+//!     .server("https://api.example.com", "Production")
+//!     .server("http://localhost:3000", "Development");
 //! ```
+//!
+//! The interactive documentation is automatically available at `/docs` when the server is running.
 
-/// Core API traits and types for defining endpoints.
-///
-/// This module contains the fundamental [`API`](api::api::API) trait that all endpoints must implement.
 pub mod api;
-
-/// Configuration types for application settings, logging, CORS, and environments.
-///
-/// Provides [`AppConfig`](config::AppConfig), [`LoggingConfig`](config::LoggingConfig),
-/// and [`CorsConfig`](config::CorsConfig) for configuring the server.
 pub mod config;
-
-/// Request context types passed to endpoint handlers.
-///
-/// Contains the [`Context`](context::Context) struct that wraps request data and headers.
 pub mod context;
-
-/// Logging initialization and utilities.
-///
-/// Provides structured logging setup with support for development and production formats.
 pub mod logging;
-
-/// OpenAPI documentation generation and serving.
-///
-/// Automatic API documentation generation with Scalar UI integration.
 pub mod openapi;
+pub mod server;
 
-/// Commonly used types and traits.
+/// HTTP types re-exported from Axum
+pub mod http {
+    pub use axum::http::*;
+}
+
+/// Re-exports commonly used types and traits
 ///
 /// Import everything you need with `use uncovr::prelude::*;`
 pub mod prelude;
 
-/// Server builder and routing functionality.
-///
-/// Contains the [`Server`](server::Server) and [`ServerBuilder`](server::ServerBuilder)
-/// for configuring and running the HTTP server.
-pub mod server;
-
-// Re-export schemars so derive macros work in user code
-pub use schemars;
-
-// Re-export commonly used Axum modules at the root level
-pub mod http {
-    //! HTTP types re-exported from Axum.
-    //!
-    //! Includes status codes, headers, methods, and other HTTP primitives.
-    pub use axum::http::*;
-}
-
+/// Axum extractors
 pub mod extract {
-    //! Request extractors re-exported from Axum.
-    //!
-    //! Extractors allow you to declaratively parse different parts of a request.
     pub use axum::extract::*;
 }
 
+/// Response types
 pub mod response {
-    //! Response types re-exported from Axum.
-    //!
-    //! Types for building HTTP responses.
     pub use axum::response::*;
 }
 
+/// Routing utilities
+pub mod routing {
+    pub use axum::routing::*;
+}
+
+/// Axum middleware utilities
 pub mod axum_middleware {
-    //! Middleware types re-exported from Axum.
-    //!
-    //! Use these to create custom middleware that can modify requests/responses
-    //! and inject data into request extensions.
-    //!
-    //! # Example
-    //!
-    //! ```rust,ignore
-    //! use uncovr::axum_middleware::from_fn;
-    //!
-    //! async fn my_middleware(req: Request, next: Next) -> Response {
-    //!     // Add data to extensions
-    //!     req.extensions_mut().insert(MyData::default());
-    //!     next.run(req).await
-    //! }
-    //!
-    //! // Apply middleware using .layer()
-    //! server.layer(from_fn(my_middleware))
-    //! ```
     pub use axum::middleware::*;
 }
 
+/// Tower middleware and service utilities
 pub mod tower {
-    //! Tower middleware and service utilities.
-    //!
-    //! Tower provides composable middleware layers for building robust services.
-    //! Use these to add functionality like timeouts, rate limiting, and more.
     pub use tower::*;
-}
-
-pub mod routing {
-    //! Routing utilities re-exported from Axum.
-    //!
-    //! Types and functions for advanced routing scenarios.
-    pub use axum::routing::*;
 }
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use http::Extensions;
-
-    use super::prelude::*;
+    use crate::context::Context;
 
     #[test]
-    fn context_creation() {
-        let ctx = Context {
-            req: "request".to_string(),
-            headers: Arc::new(HeaderMap::new()),
-            path: PathParams::empty(),
-            query: QueryParams::empty(),
-            extensions: Extensions::new(),
+    fn test_context_creation() {
+        let ctx = Context::<()> {
+            req: (),
+            headers: Default::default(),
+            path: crate::server::PathParams::new(Default::default()),
+            query: crate::server::QueryParams::new(Default::default()),
+            extensions: Default::default(),
         };
-        assert_eq!(ctx.req, "request");
+
+        assert_eq!(ctx.path.get_string("test"), None);
     }
 }

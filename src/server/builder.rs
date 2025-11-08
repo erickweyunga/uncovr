@@ -27,6 +27,7 @@ use crate::api::api::API;
 use crate::config::{AppConfig, CorsConfig};
 use crate::context::Context;
 use crate::openapi::{OpenApiConfig, serve_docs, serve_scalar_ui};
+use crate::server::endpoint::Endpoint as EndpointTrait;
 use crate::server::params::{PathParams, QueryParams};
 
 /// Custom extractor for HTTP Extensions.
@@ -236,143 +237,15 @@ impl Default for ServerBuilder {
     }
 }
 
-/// Parameter information for OpenAPI documentation
+/// Parameter information for OpenAPI documentation (internal helper)
 #[derive(Debug, Clone)]
-pub struct ParamInfo {
+struct ParamInfo {
     /// Parameter name
-    pub name: &'static str,
+    name: &'static str,
     /// Parameter description
-    pub description: Option<&'static str>,
+    description: Option<&'static str>,
     /// Whether the parameter is required
-    pub required: bool,
-}
-
-/// Response callback type for configuring OpenAPI responses
-pub type ResponseCallback = Box<
-    dyn FnOnce(aide::transform::TransformOperation) -> aide::transform::TransformOperation + Send,
->;
-
-/// Endpoint metadata for API documentation
-pub struct Endpoint {
-    /// The path for this endpoint (e.g., "/users", "/users/:id")
-    pub path: &'static str,
-    /// The HTTP method (e.g., "get", "post", "put", "delete", "patch")
-    pub method: &'static str,
-    /// Optional summary description for this endpoint
-    pub summary: Option<&'static str>,
-    /// Optional description for detailed documentation
-    pub description: Option<&'static str>,
-    /// Query parameters for this endpoint
-    pub query_params: Vec<ParamInfo>,
-    /// Path parameters for this endpoint
-    pub path_params: Vec<ParamInfo>,
-    /// Optional response configuration callback
-    pub response_config: Option<ResponseCallback>,
-}
-
-impl Endpoint {
-    /// Create new endpoint metadata
-    pub fn new(path: &'static str, method: &'static str) -> Self {
-        Self {
-            path,
-            method,
-            summary: None,
-            description: None,
-            query_params: Vec::new(),
-            path_params: Vec::new(),
-            response_config: None,
-        }
-    }
-
-    /// Set the summary description
-    pub fn summary(mut self, summary: &'static str) -> Self {
-        self.summary = Some(summary);
-        self
-    }
-
-    /// Set the detailed description
-    pub fn description(mut self, description: &'static str) -> Self {
-        self.description = Some(description);
-        self
-    }
-
-    /// Add a query parameter
-    pub fn query(mut self, name: &'static str) -> Self {
-        self.query_params.push(ParamInfo {
-            name,
-            description: None,
-            required: false,
-        });
-        self
-    }
-
-    /// Add a path parameter
-    pub fn path_param(mut self, name: &'static str) -> Self {
-        self.path_params.push(ParamInfo {
-            name,
-            description: None,
-            required: true,
-        });
-        self
-    }
-
-    /// Mark the last added query parameter as required
-    pub fn required(mut self) -> Self {
-        if let Some(param) = self.query_params.last_mut() {
-            param.required = true;
-        }
-        self
-    }
-
-    /// Add description to the last added parameter
-    pub fn desc(mut self, description: &'static str) -> Self {
-        if let Some(param) = self.query_params.last_mut() {
-            param.description = Some(description);
-        } else if let Some(param) = self.path_params.last_mut() {
-            param.description = Some(description);
-        }
-        self
-    }
-
-    /// Configure responses for this endpoint using a callback
-    ///
-    /// Provides direct access to aide's TransformOperation for maximum flexibility.
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use uncovr::prelude::*;
-    /// use serde::Serialize;
-    /// use schemars::JsonSchema;
-    ///
-    /// #[derive(Serialize, JsonSchema)]
-    /// struct User {
-    ///     id: u64,
-    ///     name: String,
-    /// }
-    ///
-    /// let endpoint = Endpoint::new("/users", "get")
-    ///     .summary("Get users")
-    ///     .with_responses(|op| {
-    ///         op.response::<200, Json<Vec<User>>>()
-    ///           .response::<400, Json<ErrorResponse>>()
-    ///           .response::<500, Json<ErrorResponse>>()
-    ///     });
-    /// ```
-    pub fn with_responses<F>(mut self, callback: F) -> Self
-    where
-        F: FnOnce(aide::transform::TransformOperation) -> aide::transform::TransformOperation
-            + Send
-            + 'static,
-    {
-        self.response_config = Some(Box::new(callback));
-        self
-    }
-}
-
-/// Endpoint metadata trait for API documentation
-pub trait Metadata: API {
-    /// Get the metadata for this endpoint
-    fn metadata(&self) -> Endpoint;
+    required: bool,
 }
 
 /// Helper function to convert ParamInfo to aide's Parameter type for OpenAPI
@@ -452,21 +325,48 @@ impl ServerBuilder {
         self
     }
 
-    /// Register an API endpoint with OpenAPI documentation
+    /// Register an API endpoint.
+    ///
+    /// This method uses the new Endpoint trait that separates route definition from documentation.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use uncovr::server::Server;
+    /// use uncovr::server::endpoint::{Endpoint, Route, Docs};
+    /// use uncovr::api::API;
+    ///
+    /// #[derive(Clone)]
+    /// struct CreateUser;
+    ///
+    /// impl Endpoint for CreateUser {
+    ///     fn ep(&self) -> Route {
+    ///         Route::POST("/users")
+    ///     }
+    ///
+    ///     fn docs(&self) -> Option<Docs> {
+    ///         Some(Docs::new().summary("Create a user"))
+    ///     }
+    /// }
+    ///
+    /// // Also implement API trait...
+    /// ```
     pub fn register<E>(mut self, endpoint: E) -> Self
     where
-        E: Metadata + Send + Sync + 'static,
+        E: EndpointTrait + API + Send + Sync + 'static,
         E::Req: serde::de::DeserializeOwned + schemars::JsonSchema + Default + Send + 'static,
         E::Res: aide::OperationOutput + axum::response::IntoResponse + Send + 'static,
-        // If response is Json<T>, T must implement JsonSchema
         <E::Res as aide::OperationOutput>::Inner: schemars::JsonSchema,
     {
-        let meta = endpoint.metadata();
-        let path = meta.path;
-        let method = meta.method;
-        let summary = meta.summary.unwrap_or("");
-        let description = meta.description;
-        let response_config = meta.response_config;
+        let route_def = endpoint.ep();
+        let docs = endpoint.docs();
+
+        let path = route_def.path;
+        let method = route_def.method.as_str();
+        let summary = docs.as_ref().and_then(|d| d.summary).unwrap_or("");
+        let description = docs.as_ref().and_then(|d| d.description);
+        let tags = docs.as_ref().map(|d| d.tags.clone()).unwrap_or_default();
+        let response_config = docs.and_then(|d| d.response_config);
 
         let endpoint = Arc::new(endpoint);
 
@@ -494,15 +394,25 @@ impl ServerBuilder {
                         }
                     },
                     |mut op| {
-                        for param in &meta.query_params {
+                        // Add query parameters
+                        for param in &route_def.query_params {
+                            let param_info = ParamInfo {
+                                name: param.name,
+                                description: param.description,
+                                required: param.required,
+                            };
                             op.inner_mut()
                                 .parameters
-                                .push(param_info_to_query_param(param));
+                                .push(param_info_to_query_param(&param_info));
                         }
 
                         op = op.summary(summary);
                         if let Some(desc) = description {
                             op = op.description(desc);
+                        }
+
+                        for tag in &tags {
+                            op = op.tag(tag);
                         }
 
                         // Apply response config callback if provided
@@ -538,15 +448,24 @@ impl ServerBuilder {
                         }
                     },
                     |mut op| {
-                        for param in &meta.query_params {
+                        for param in &route_def.query_params {
+                            let param_info = ParamInfo {
+                                name: param.name,
+                                description: param.description,
+                                required: param.required,
+                            };
                             op.inner_mut()
                                 .parameters
-                                .push(param_info_to_query_param(param));
+                                .push(param_info_to_query_param(&param_info));
                         }
 
                         op = op.summary(summary);
                         if let Some(desc) = description {
                             op = op.description(desc);
+                        }
+
+                        for tag in &tags {
+                            op = op.tag(tag);
                         }
 
                         // Apply response config callback if provided
@@ -582,15 +501,24 @@ impl ServerBuilder {
                         }
                     },
                     |mut op| {
-                        for param in &meta.query_params {
+                        for param in &route_def.query_params {
+                            let param_info = ParamInfo {
+                                name: param.name,
+                                description: param.description,
+                                required: param.required,
+                            };
                             op.inner_mut()
                                 .parameters
-                                .push(param_info_to_query_param(param));
+                                .push(param_info_to_query_param(&param_info));
                         }
 
                         op = op.summary(summary);
                         if let Some(desc) = description {
                             op = op.description(desc);
+                        }
+
+                        for tag in &tags {
+                            op = op.tag(tag);
                         }
 
                         // Apply response config callback if provided
@@ -626,15 +554,24 @@ impl ServerBuilder {
                         }
                     },
                     |mut op| {
-                        for param in &meta.query_params {
+                        for param in &route_def.query_params {
+                            let param_info = ParamInfo {
+                                name: param.name,
+                                description: param.description,
+                                required: param.required,
+                            };
                             op.inner_mut()
                                 .parameters
-                                .push(param_info_to_query_param(param));
+                                .push(param_info_to_query_param(&param_info));
                         }
 
                         op = op.summary(summary);
                         if let Some(desc) = description {
                             op = op.description(desc);
+                        }
+
+                        for tag in &tags {
+                            op = op.tag(tag);
                         }
 
                         // Apply response config callback if provided
@@ -670,15 +607,24 @@ impl ServerBuilder {
                         }
                     },
                     |mut op| {
-                        for param in &meta.query_params {
+                        for param in &route_def.query_params {
+                            let param_info = ParamInfo {
+                                name: param.name,
+                                description: param.description,
+                                required: param.required,
+                            };
                             op.inner_mut()
                                 .parameters
-                                .push(param_info_to_query_param(param));
+                                .push(param_info_to_query_param(&param_info));
                         }
 
                         op = op.summary(summary);
                         if let Some(desc) = description {
                             op = op.description(desc);
+                        }
+
+                        for tag in &tags {
+                            op = op.tag(tag);
                         }
 
                         // Apply response config callback if provided
@@ -713,15 +659,24 @@ impl ServerBuilder {
                         }
                     },
                     |mut op| {
-                        for param in &meta.query_params {
+                        for param in &route_def.query_params {
+                            let param_info = ParamInfo {
+                                name: param.name,
+                                description: param.description,
+                                required: param.required,
+                            };
                             op.inner_mut()
                                 .parameters
-                                .push(param_info_to_query_param(param));
+                                .push(param_info_to_query_param(&param_info));
                         }
 
                         op = op.summary(summary);
                         if let Some(desc) = description {
                             op = op.description(desc);
+                        }
+
+                        for tag in &tags {
+                            op = op.tag(tag);
                         }
 
                         // Apply response config callback if provided
@@ -739,7 +694,7 @@ impl ServerBuilder {
         self
     }
 
-    /// Merge another router into this one
+    /// Merge another router into this server builder
     pub fn merge(mut self, router: ApiRouter) -> Self {
         self.router = self.router.merge(router);
         self
@@ -944,6 +899,7 @@ impl ServerBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prelude::*;
     use serde::{Deserialize, Serialize};
 
     #[derive(Clone)]
@@ -954,9 +910,13 @@ mod tests {
         name: String,
     }
 
-    impl Metadata for TestEndpoint {
-        fn metadata(&self) -> Endpoint {
-            Endpoint::new("/test", "get").summary("Test endpoint")
+    impl Endpoint for TestEndpoint {
+        fn ep(&self) -> Route {
+            Route::GET("/tests")
+        }
+
+        fn docs(&self) -> Option<Docs> {
+            Some(Docs::new().summary("Test endpoint"))
         }
     }
 

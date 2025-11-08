@@ -1,6 +1,6 @@
 # Routes
 
-Understanding how routing works in Uncovr and how to build structured APIs.
+Understanding how routing works in Uncovr and how to build structured APIs with the new Endpoint API.
 
 ## The Concept of Routing
 
@@ -10,429 +10,608 @@ Think of routing like a postal system. The URL path is the address, and the HTTP
 
 ## How Routes Work in Uncovr
 
-In Uncovr, you define routes through the `Metadata` trait. This trait tells the framework three essential pieces of information:
+In Uncovr, you define routes through the `Endpoint` trait. This trait separates routing concerns from documentation:
 
-1. **The path**: Where should requests go? (e.g., `/users`)
-2. **The HTTP method**: What kind of operation? (e.g., `get`, `post`)
-3. **Documentation**: What does this endpoint do? (for OpenAPI docs)
+1. **`ep()` method**: Defines the route (path, method, parameters)
+2. **`docs()` method**: Provides optional API documentation
 
 Here's a complete example:
 
 ```rust
 use uncovr::prelude::*;
+use uncovr::server::endpoint::{Endpoint, Route, Docs};
 
 #[derive(Clone)]
 pub struct GetUser;
 
-impl Metadata for GetUser {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/users/:id", "get")
-            .summary("Retrieve a user by ID")
+impl Endpoint for GetUser {
+    fn ep(&self) -> Route {
+        let mut route = Route::GET("/users/:id");
+        route.path_param("id").desc("User ID");
+        route
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Retrieve a user by ID")
+                .description("Fetches user information from the database")
+                .tag("users")
+        )
     }
 }
 ```
 
 When you register this endpoint, Uncovr knows: "When someone makes a GET request to `/users/:id`, call this handler."
 
-## HTTP Methods and Their Purpose
+## HTTP Methods - Type-Safe Constructors
 
-HTTP methods indicate the intent of the request. Understanding when to use each one is crucial for building intuitive APIs.
+Uncovr uses type-safe HTTP method constructors instead of strings. This prevents typos and provides better IDE support.
 
 ### GET - Retrieving Data
 
 GET requests fetch data without modifying anything on the server. They should be safe to call multiple times with the same result.
 
 ```rust
-Endpoint::new("/users", "get")
-    .summary("List all users")
+impl Endpoint for ListUsers {
+    fn ep(&self) -> Route {
+        Route::GET("/users")
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(Docs::new().summary("List all users"))
+    }
+}
 ```
 
 **Key characteristic**: Idempotent and safe. Calling it 100 times has the same effect as calling it once.
+
+**Common use cases**:
+- Fetching a single resource (`/users/:id`)
+- Listing multiple resources (`/users`)
+- Searching or filtering (`/users?role=admin`)
 
 ### POST - Creating New Resources
 
 POST creates a new resource. The server typically assigns a new ID and returns the created resource.
 
 ```rust
-Endpoint::new("/users", "post")
-    .summary("Create a new user")
+impl Endpoint for CreateUser {
+    fn ep(&self) -> Route {
+        Route::POST("/users")
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Create a new user")
+                .tag("users")
+                .responses(|op| {
+                    op.response::<201, Json<UserResponse>>()
+                      .response::<400, Json<ErrorResponse>>()
+                })
+        )
+    }
+}
 ```
 
 **Key characteristic**: Not idempotent. Calling it twice creates two resources.
+
+**Common use cases**:
+- Creating new resources
+- Submitting forms
+- Starting new processes
+- Uploading files
 
 ### PUT - Replacing a Resource
 
 PUT replaces an entire resource. You're saying "make this resource look exactly like what I'm sending."
 
 ```rust
-Endpoint::new("/users/:id", "put")
-    .summary("Replace user data completely")
+impl Endpoint for ReplaceUser {
+    fn ep(&self) -> Route {
+        let mut route = Route::PUT("/users/:id");
+        route.path_param("id").required().desc("User ID");
+        route
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(Docs::new().summary("Replace user data completely"))
+    }
+}
 ```
 
 **Key characteristic**: Idempotent. Sending the same PUT twice results in the same final state.
+
+**When to use PUT vs PATCH**:
+- Use PUT when you want to replace the entire resource
+- Use PATCH when you want to update specific fields
 
 ### PATCH - Partial Updates
 
 PATCH modifies part of a resource without replacing the whole thing.
 
 ```rust
-Endpoint::new("/users/:id", "patch")
-    .summary("Update specific user fields")
+impl Endpoint for UpdateUser {
+    fn ep(&self) -> Route {
+        let mut route = Route::PATCH("/users/:id");
+        route.path_param("id").required();
+        route
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(Docs::new().summary("Update specific user fields"))
+    }
+}
 ```
 
 **Key characteristic**: Not necessarily idempotent, depends on the patch operations.
+
+**Example request body**:
+```json
+{
+  "name": "New Name"
+}
+```
+
+Only the `name` field is updated; other fields remain unchanged.
 
 ### DELETE - Removing Resources
 
 DELETE removes a resource from the system.
 
 ```rust
-Endpoint::new("/users/:id", "delete")
-    .summary("Remove a user")
+impl Endpoint for DeleteUser {
+    fn ep(&self) -> Route {
+        let mut route = Route::DELETE("/users/:id");
+        route.path_param("id").required().desc("User ID to delete");
+        route
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Remove a user")
+                .responses(|op| {
+                    op.response::<204, ()>()
+                      .response::<404, Json<ErrorResponse>>()
+                })
+        )
+    }
+}
 ```
 
 **Key characteristic**: Idempotent. Deleting twice has the same effect as deleting once (the resource is gone).
+
+**Response patterns**:
+- `204 No Content` - Successfully deleted, no response body
+- `404 Not Found` - Resource doesn't exist
+- `200 OK` - Successfully deleted, returns the deleted resource
+
+### OPTIONS and HEAD
+
+```rust
+// OPTIONS - Describe available operations
+Route::OPTIONS("/users")
+
+// HEAD - Like GET but returns only headers
+Route::HEAD("/users")
+```
+
+These are less commonly used but available when needed.
 
 ## Working with Path Parameters
 
 Path parameters let you capture values directly from the URL. They're declared in the path using the `:name` syntax.
 
-### Understanding Path Parameters
-
-When you write `/users/:id`, the `:id` part is a placeholder. Any value in that position gets captured and made available to your handler.
-
-Request: `GET /users/42`
-The value `42` is captured as the `id` parameter.
-
-Request: `GET /users/sarah`
-The value `sarah` is captured as the `id` parameter.
-
-### Accessing Path Parameters
-
-Path parameters are accessed through `ctx.path` in your handler:
+### Basic Path Parameters
 
 ```rust
-async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
-    // Type-safe extraction
-    if let Some(user_id) = ctx.path.get_u64("id") {
-        // user_id is a u64
-    }
-    
-    // Or as a string
-    if let Some(id_str) = ctx.path.get_string("id") {
-        // id_str is a String
+impl Endpoint for GetUserPost {
+    fn ep(&self) -> Route {
+        let mut route = Route::GET("/users/:user_id/posts/:post_id");
+        route.path_param("user_id").desc("The user's ID");
+        route.path_param("post_id").desc("The post's ID");
+        route
     }
 }
 ```
 
-Available conversion methods:
-- `get_string(name)` - Extract as String
-- `get_u64(name)` - Extract as unsigned 64-bit integer
-- `get_i64(name)` - Extract as signed 64-bit integer  
-- `get_f64(name)` - Extract as floating-point number
-- `get_bool(name)` - Extract as boolean
-
-These methods return `Option<T>`, so you can handle missing or invalid parameters gracefully.
-
-### Declaring Path Parameters for Documentation
-
-Tell OpenAPI about your path parameters using `.path_param()`:
+**Extracting path parameters in handlers**:
 
 ```rust
-impl Metadata for GetUser {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/users/:id", "get")
-            .summary("Get a user by ID")
-            .path_param("id").desc("Unique user identifier")
+#[async_trait]
+impl API for GetUserPost {
+    type Req = ();
+    type Res = Json<PostResponse>;
+
+    async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
+        let user_id = ctx.path.get_u64("user_id").unwrap_or(0);
+        let post_id = ctx.path.get_u64("post_id").unwrap_or(0);
+        
+        // Fetch the post...
+        Json(post)
     }
 }
 ```
 
-This makes your API documentation clear about what parameters are expected.
+### Path Parameter Types
 
-### Multiple Path Parameters
-
-You can have several parameters in one path:
+The `PathParams` API provides type-safe extraction:
 
 ```rust
-Endpoint::new("/users/:user_id/posts/:post_id", "get")
-    .path_param("user_id").desc("The user's ID")
-    .path_param("post_id").desc("The post's ID")
+// Extract as different types
+let id = ctx.path.get_u64("id");          // Option<u64>
+let name = ctx.path.get("name");          // Option<&str>
+let is_active = ctx.path.get_bool("active"); // Option<bool>
 ```
 
-Access them the same way:
+### Required vs Optional Parameters
+
+Path parameters are typically required (they're part of the route), but you can document this:
 
 ```rust
-let user_id = ctx.path.get_u64("user_id");
-let post_id = ctx.path.get_u64("post_id");
+fn ep(&self) -> Route {
+    let mut route = Route::GET("/users/:id");
+    route.path_param("id").required().desc("User ID");
+    route
+}
 ```
 
 ## Working with Query Parameters
 
-Query parameters come after a `?` in the URL and are used for optional data like filters, pagination, or search terms.
+Query parameters are key-value pairs in the URL after the `?` symbol: `/users?page=1&limit=10`
 
-### Understanding Query Parameters
-
-Query parameters are key-value pairs appended to the URL:
-
-```
-GET /users?page=2&limit=10&sort=name
-```
-
-Here we have three query parameters:
-- `page` with value `2`
-- `limit` with value `10`
-- `sort` with value `name`
-
-### Accessing Query Parameters
-
-Query parameters are accessed through `ctx.query`:
+### Defining Query Parameters
 
 ```rust
-async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
-    let page = ctx.query.get_u64("page").unwrap_or(1);
-    let limit = ctx.query.get_u64("limit").unwrap_or(20);
-    let sort = ctx.query.get_string("sort").unwrap_or_else(|| "id".to_string());
-    
-    // Use these values to filter/paginate your results
-}
-```
+impl Endpoint for ListUsers {
+    fn ep(&self) -> Route {
+        let mut route = Route::GET("/users");
+        route.query("page").desc("Page number (default: 1)");
+        route.query("limit").desc("Items per page (default: 10)");
+        route.query("role").desc("Filter by role");
+        route
+    }
 
-The same conversion methods work as with path parameters.
-
-### Declaring Query Parameters for Documentation
-
-Use `.query()` to document query parameters:
-
-```rust
-impl Metadata for ListUsers {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/users", "get")
-            .summary("List users with optional filtering")
-            .query("page").desc("Page number for pagination")
-            .query("limit").desc("Number of users per page")
-            .query("sort").desc("Field to sort by")
+    fn docs(&self) -> Option<Docs> {
+        Some(Docs::new().summary("List users with pagination"))
     }
 }
 ```
 
-### Making Query Parameters Required
-
-By default, query parameters are optional. Mark them as required with `.required()`:
+### Extracting Query Parameters
 
 ```rust
-Endpoint::new("/search", "get")
-    .summary("Search users")
-    .query("q").desc("Search query").required()
-    .query("page").desc("Page number")  // Optional
+#[async_trait]
+impl API for ListUsers {
+    type Req = ();
+    type Res = Json<Vec<User>>;
+
+    async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
+        let page = ctx.query.get_u32("page").unwrap_or(1);
+        let limit = ctx.query.get_u32("limit").unwrap_or(10);
+        let role = ctx.query.get("role"); // Option<&str>
+        
+        // Apply filters...
+        Json(users)
+    }
+}
 ```
 
-The `.required()` method applies to the most recently added parameter.
+### Required Query Parameters
 
-## The Difference: Path vs Query vs Body
-
-Understanding when to use each type of parameter is important for clear API design.
-
-### Path Parameters
-
-Use for identifying a specific resource:
-- `/users/:id` - The ID identifies which user
-- `/posts/:slug` - The slug identifies which post
-
-**Rule of thumb**: If removing it makes the URL meaningless, it should be a path parameter.
-
-### Query Parameters
-
-Use for optional data that filters or modifies the response:
-- `/users?role=admin` - Filter users by role
-- `/posts?published=true&sort=date` - Filter and sort posts
-
-**Rule of thumb**: If removing it still makes sense (you get a default behavior), it should be a query parameter.
-
-### Request Body
-
-Use for data that's being created or updated:
-- `POST /users` with user data in body - Creating a user
-- `PUT /users/:id` with updated fields in body - Updating a user
-
-**Rule of thumb**: If you're sending data TO the server to store, it goes in the body.
-
-## Path Matching Priority
-
-When multiple routes could match a URL, Uncovr follows this priority order:
-
-1. **Exact string matches** - `/users/new`
-2. **Path parameters** - `/users/:id`
-3. **Catch-all wildcards** - `/users/*path`
-
-Example scenario:
+Mark query parameters as required for better documentation:
 
 ```rust
-// Route 1: Exact match
-Endpoint::new("/users/new", "get")
-
-// Route 2: Path parameter
-Endpoint::new("/users/:id", "get")
+fn ep(&self) -> Route {
+    let mut route = Route::GET("/search");
+    route.query("q").required().desc("Search query");
+    route.query("limit").desc("Max results (optional)");
+    route
+}
 ```
 
-Request to `/users/new` will match Route 1, not Route 2.
-Request to `/users/123` will match Route 2.
-
-This means you can have specialized handlers for specific paths while still catching all other values with parameters.
-
-## Organizing Your Routes
-
-As your API grows, organizing routes becomes important for maintainability. The recommended approach is to organize by feature/resource with a clear separation between API definitions and business logic.
-
-For a complete guide on structuring your Uncovr application, see [Project Structure](./project-structure.md).
-
-**Quick overview:**
-- Group related endpoints into feature modules (e.g., `users/`, `posts/`)
-- Split each feature into `apis.rs` (definitions) and `handlers.rs` (logic)
-- Keep it flat and consistent across all features
-
-## RESTful Route Patterns
-
-REST (Representational State Transfer) provides conventions for structuring APIs. Following these conventions makes your API intuitive for other developers.
-
-### Standard Resource Operations
+### Query Parameter Types
 
 ```rust
-GET    /users           // List all users
-POST   /users           // Create a new user
-GET    /users/:id       // Get one user
-PUT    /users/:id       // Update a user
-PATCH  /users/:id       // Partially update a user
-DELETE /users/:id       // Delete a user
+// Different extraction methods
+let page = ctx.query.get_u32("page");      // Option<u32>
+let limit = ctx.query.get_u64("limit");    // Option<u64>
+let active = ctx.query.get_bool("active"); // Option<bool>
+let name = ctx.query.get("name");          // Option<&str>
 ```
 
-### Nested Resources
+## Route Patterns and Best Practices
 
-Show relationships through URL structure:
+### RESTful Resource Naming
+
+Follow REST conventions for consistent APIs:
 
 ```rust
-GET /users/:user_id/posts              // All posts by a user
-GET /users/:user_id/posts/:post_id     // One specific post
+// Collection operations
+Route::GET("/users")      // List all users
+Route::POST("/users")     // Create a user
+
+// Single resource operations
+Route::GET("/users/:id")     // Get one user
+Route::PUT("/users/:id")     // Replace user
+Route::PATCH("/users/:id")   // Update user
+Route::DELETE("/users/:id")  // Delete user
+
+// Nested resources
+Route::GET("/users/:user_id/posts")           // User's posts
+Route::POST("/users/:user_id/posts")          // Create post for user
+Route::GET("/users/:user_id/posts/:post_id")  // Specific post
 ```
 
-This reads naturally: "Get the posts of user X" or "Get post Y of user X".
+### Versioning
 
-### Actions Beyond CRUD
-
-Sometimes you need operations that don't fit create/read/update/delete. Use descriptive paths:
+Version your API in the path:
 
 ```rust
-POST /users/:id/activate      // Activate a user account
-POST /posts/:id/publish       // Publish a draft post
-POST /orders/:id/cancel       // Cancel an order
+Route::GET("/v1/users")
+Route::GET("/v2/users")
 ```
 
-The POST method indicates you're changing state, and the path indicates what action you're taking.
-
-## Versioning Your API
-
-As your API evolves, versioning helps you make changes without breaking existing clients.
-
-### Path-Based Versioning
-
-Include the version in the URL:
+Or use a version prefix when registering:
 
 ```rust
-Endpoint::new("/v1/users", "get")
-Endpoint::new("/v2/users", "get")
+Server::new()
+    .with_config(config)
+    .nest("/v1", v1_routes)
+    .nest("/v2", v2_routes)
 ```
 
-This is explicit and easy to understand. Clients choose which version to use by changing the URL.
+### Action Routes
 
-### Nested Versioning
-
-Use the nesting feature for cleaner organization:
+Sometimes you need actions beyond CRUD:
 
 ```rust
-let v1_router = Server::new()
-    .register(V1GetUser)
-    .register(V1CreateUser)
+// Prefer POST for actions
+Route::POST("/users/:id/activate")
+Route::POST("/users/:id/reset-password")
+Route::POST("/orders/:id/cancel")
+```
+
+### Search and Filtering
+
+Use query parameters for search and filtering:
+
+```rust
+impl Endpoint for SearchUsers {
+    fn ep(&self) -> Route {
+        let mut route = Route::GET("/users/search");
+        route.query("q").required().desc("Search query");
+        route.query("role").desc("Filter by role");
+        route.query("status").desc("Filter by status");
+        route
+    }
+}
+```
+
+**Example requests**:
+```
+GET /users/search?q=john&role=admin
+GET /users/search?q=doe&status=active
+```
+
+## Route Organization
+
+### Feature-Based Structure
+
+Organize routes by feature for better maintainability:
+
+```
+src/
+├── users/
+│   ├── mod.rs
+│   ├── apis.rs       # Route definitions
+│   └── handlers.rs   # Business logic
+├── posts/
+│   ├── mod.rs
+│   ├── apis.rs
+│   └── handlers.rs
+└── main.rs
+```
+
+### Grouping with Tags
+
+Use tags in documentation to group related endpoints:
+
+```rust
+impl Endpoint for CreateUser {
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Create user")
+                .tag("users")
+                .tag("admin")
+        )
+    }
+}
+```
+
+Tags appear in the OpenAPI documentation, making it easier to navigate large APIs.
+
+## Advanced Routing Patterns
+
+### Nested Routers
+
+Split your API into logical sections:
+
+```rust
+// User routes
+let user_routes = Server::new()
+    .register(GetUser)
+    .register(CreateUser)
     .build()
     .into_router();
 
-let v2_router = Server::new()
-    .register(V2GetUser)
-    .register(V2CreateUser)
+// Post routes
+let post_routes = Server::new()
+    .register(GetPost)
+    .register(CreatePost)
+    .build()
+    .into_router();
+
+// Combine
+Server::new()
+    .with_config(config)
+    .nest("/users", user_routes)
+    .nest("/posts", post_routes)
+    .serve()
+    .await
+```
+
+Results in:
+- `/users/*` - User endpoints
+- `/posts/*` - Post endpoints
+
+### Middleware Per Route Group
+
+Apply middleware to specific route groups:
+
+```rust
+use uncovr::tower::Layer;
+use uncovr::axum_middleware::from_fn;
+
+// Public routes (no auth)
+let public_routes = Server::new()
+    .register(Login)
+    .register(Register)
+    .build()
+    .into_router();
+
+// Protected routes (with auth)
+let protected_routes = Server::new()
+    .register(GetProfile)
+    .register(UpdateProfile)
+    .layer(from_fn(auth_middleware))
     .build()
     .into_router();
 
 Server::new()
-    .nest("/v1", v1_router)
-    .nest("/v2", v2_router)
+    .with_config(config)
+    .nest("/auth", public_routes)
+    .nest("/api", protected_routes)
     .serve()
-    .await;
+    .await
 ```
 
-Now all v1 routes automatically have the `/v1` prefix, and all v2 routes have `/v2`.
+## Common Routing Mistakes to Avoid
 
-## Common Routing Mistakes
+### 1. Mixing Plural and Singular
 
-### Mistake 1: Verbs in URLs
-
-**Don't do this:**
+**Bad**:
 ```rust
-POST /createUser
-GET /getUser/:id
-DELETE /deleteUser/:id
+Route::GET("/user/:id")    // Singular
+Route::GET("/posts")       // Plural
 ```
 
-**Do this instead:**
+**Good**:
 ```rust
-POST /users           // The POST method indicates "create"
-GET /users/:id        // The GET method indicates "retrieve"
-DELETE /users/:id     // The DELETE method indicates "delete"
+Route::GET("/users/:id")   // Consistent plural
+Route::GET("/posts")
 ```
 
-The HTTP method already indicates the action. The URL should identify the resource.
+### 2. Using Verbs in URLs
 
-### Mistake 2: Unclear Parameter Types
-
-**Don't do this:**
+**Bad**:
 ```rust
-GET /items/:id   // ID of what? Item? User? Category?
+Route::POST("/users/create")
+Route::POST("/users/delete/:id")
 ```
 
-**Do this instead:**
+**Good**:
 ```rust
-GET /items/:item_id        // Clear: it's the item's ID
-GET /users/:user_id/items/:item_id  // Clear in nested context
+Route::POST("/users")
+Route::DELETE("/users/:id")
 ```
 
-Use descriptive parameter names that leave no ambiguity.
+The HTTP method provides the verb!
 
-### Mistake 3: Mixing Body and Path Parameters
+### 3. Deep Nesting
 
-**Don't do this:**
+**Bad**:
 ```rust
-// Handler expects both path param :id AND body with an ID field
-PUT /users/:id
-// Body: { "id": 123, "name": "John" }
+Route::GET("/users/:user_id/posts/:post_id/comments/:comment_id/likes")
 ```
 
-**Do this instead:**
+**Good**:
 ```rust
-// ID comes from path only
-PUT /users/:id
-// Body: { "name": "John" }
+Route::GET("/comments/:comment_id/likes")
 ```
 
-The resource identifier should come from the path. Additional data goes in the body.
+Keep nesting to 2-3 levels maximum.
 
-## Technical Foundation
+### 4. Forgetting Parameter Descriptions
 
-Uncovr's routing is built on proven technologies:
+**Bad**:
+```rust
+fn ep(&self) -> Route {
+    let mut route = Route::GET("/users/:id");
+    route.path_param("id");  // No description
+    route
+}
+```
 
-- **Axum**: Provides the core routing engine and HTTP server
-- **Aide**: Generates OpenAPI documentation from your routes
-- **Tower**: Supplies middleware capabilities
+**Good**:
+```rust
+fn ep(&self) -> Route {
+    let mut route = Route::GET("/users/:id");
+    route.path_param("id").desc("User's unique identifier");
+    route
+}
+```
 
-When you register routes, Uncovr compiles them into an optimized routing tree at startup. This means route matching is fast regardless of how many routes you have.
+Descriptions appear in OpenAPI documentation!
 
-Path and query parameters are extracted automatically before your handler runs. If extraction fails (wrong type, missing required parameter), Uncovr handles the error response for you.
+## Testing Routes
 
+Test your routes with standard HTTP clients:
 
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[tokio::test]
+    async fn test_get_user() {
+        let app = Server::new()
+            .register(GetUser)
+            .build()
+            .into_router();
+            
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/users/123")
+                    .body(Body::empty())
+                    .unwrap()
+            )
+            .await
+            .unwrap();
+            
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+}
+```
+
+## Summary
+
+**Type-Safe Methods**: Use `Route::GET()`, `Route::POST()`, etc. instead of strings.
+
+**Separation of Concerns**: Define routes in `ep()`, documentation in `docs()`.
+
+**Path Parameters**: Capture dynamic values with `:name` syntax.
+
+**Query Parameters**: Use for filtering, pagination, and optional data.
+
+**RESTful Conventions**: Follow standard patterns for intuitive APIs.
+
+**Organization**: Group routes by feature and use tags for documentation.
+
+**Parameter Documentation**: Always describe parameters for better OpenAPI docs.
+
+The new Endpoint API makes routing cleaner, more type-safe, and easier to maintain while keeping your documentation separate and optional.

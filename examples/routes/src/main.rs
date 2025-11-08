@@ -1,12 +1,26 @@
+use uncovr::server::endpoint::{Docs, Endpoint, Route};
 use uncovr::{prelude::*, server::Server};
 
 // path parameter
 #[derive(Clone)]
 pub struct GreetByName;
 
-impl Metadata for GreetByName {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/greet/:name", "get").summary("Greet someone by name")
+impl Endpoint for GreetByName {
+    fn ep(&self) -> Route {
+        let mut route = Route::GET("/greet/:name");
+        route.path_param("name").desc("Name of the person to greet");
+        route
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Greet someone by name")
+                .description(
+                    "Returns a personalized greeting using the name from the path parameter",
+                )
+                .tag("greetings"),
+        )
     }
 }
 
@@ -25,14 +39,21 @@ impl API for GreetByName {
 #[derive(Clone)]
 pub struct ListItems;
 
-impl Metadata for ListItems {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/items", "get")
-            .summary("List items with pagination")
-            .query("page")
-            .desc("Page number")
-            .query("limit")
-            .desc("Items per page")
+impl Endpoint for ListItems {
+    fn ep(&self) -> Route {
+        let mut route = Route::GET("/items");
+        route.query("page").desc("Page number");
+        route.query("limit").desc("Items per page");
+        route
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("List items with pagination")
+                .description("Returns a paginated list of items. Use page and limit query parameters to control pagination.")
+                .tag("items"),
+        )
     }
 }
 
@@ -52,14 +73,22 @@ impl API for ListItems {
 #[derive(Clone)]
 pub struct GetUserPost;
 
-impl Metadata for GetUserPost {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/users/:user_id/posts/:post_id", "get")
-            .summary("Get a specific post from a user")
-            .path_param("user_id")
-            .desc("User ID")
-            .path_param("post_id")
-            .desc("Post ID")
+impl Endpoint for GetUserPost {
+    fn ep(&self) -> Route {
+        let mut route = Route::GET("/users/:user_id/posts/:post_id");
+        route.path_param("user_id").desc("User ID");
+        route.path_param("post_id").desc("Post ID");
+        route
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Get a specific post from a user")
+                .description("Retrieves a specific post by ID that belongs to a specific user")
+                .tag("users")
+                .tag("posts"),
+        )
     }
 }
 

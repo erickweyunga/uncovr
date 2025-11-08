@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uncovr::prelude::*;
+use uncovr::server::endpoint::{Docs, Endpoint, Route};
 
 #[derive(Clone)]
 pub struct Echo;
@@ -14,9 +15,18 @@ pub struct EchoResponse {
     echo: String,
 }
 
-impl Metadata for Echo {
-    fn metadata(&self) -> Endpoint {
-        Endpoint::new("/echo", "post").summary("Echoes back request")
+impl Endpoint for Echo {
+    fn ep(&self) -> Route {
+        Route::POST("/echo")
+    }
+
+    fn docs(&self) -> Option<Docs> {
+        Some(
+            Docs::new()
+                .summary("Echo text back")
+                .description("Echoes back the text sent in the request")
+                .tag("utilities"),
+        )
     }
 }
 
