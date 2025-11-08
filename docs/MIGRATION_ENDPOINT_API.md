@@ -276,7 +276,7 @@ Server::new()
 ```rust
 Server::new()
     .with_config(config)
-    .register_endpoint(GetUsers)  // New API
+    .register(GetUsers)  // New API
     .serve()
     .await
 ```
@@ -288,8 +288,7 @@ The old `Metadata` trait and `register()` method are still supported. You can mi
 ```rust
 Server::new()
     .with_config(config)
-    .register(OldEndpoint)           // Old API
-    .register_endpoint(NewEndpoint)  // New API
+    .register(OldEndpoint)
     .serve()
     .await
 ```

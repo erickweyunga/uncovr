@@ -706,6 +706,36 @@ impl ServerBuilder {
         self
     }
 
+    /// Nest a service under a path prefix
+    ///
+    /// This allows you to nest external services like static file servers,
+    /// custom tower services, etc.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use uncovr::server::Server;
+    /// use tower_http::services::ServeDir;
+    ///
+    /// let server = Server::new()
+    ///     .nest_service("/static", ServeDir::new("public"))
+    ///     .build();
+    /// ```
+    pub fn nest_service<S>(mut self, path: &str, service: S) -> Self
+    where
+        S: tower::Service<
+                axum::http::Request<axum::body::Body>,
+                Response = axum::http::Response<axum::body::Body>,
+                Error = std::convert::Infallible,
+            > + Clone
+            + Send
+            + 'static,
+        S::Future: Send + 'static,
+    {
+        self.router = self.router.nest_service(path, service);
+        self
+    }
+
     /// Set the bind address for the server
     pub fn bind(mut self, addr: impl Into<String>) -> Self {
         self.address = addr.into();
@@ -939,5 +969,139 @@ mod tests {
             .build();
 
         assert_eq!(server.address.to_string(), "127.0.0.1:3001");
+    }
+
+    #[tokio::test]
+    async fn test_nested_routes() {
+        // Create v1 routes
+        let v1_routes = Server::new().register(TestEndpoint).build().into_router();
+
+        // Create v2 routes
+        #[derive(Clone)]
+        struct V2TestEndpoint;
+
+        #[derive(Default, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+        struct V2Response {
+            version: String,
+        }
+
+        impl Endpoint for V2TestEndpoint {
+            fn ep(&self) -> Route {
+                Route::GET("/test")
+            }
+
+            fn docs(&self) -> Option<Docs> {
+                Some(Docs::new().summary("V2 test endpoint"))
+            }
+        }
+
+        #[async_trait::async_trait]
+        impl API for V2TestEndpoint {
+            type Req = TestRequest;
+            type Res = Json<V2Response>;
+
+            async fn handler(&self, _ctx: Context<Self::Req>) -> Self::Res {
+                Json(V2Response {
+                    version: "v2".to_string(),
+                })
+            }
+        }
+
+        let v2_routes = Server::new().register(V2TestEndpoint).build().into_router();
+
+        // Nest both under versioned paths
+        let server = Server::new()
+            .with_openapi(OpenApiConfig::new("Nested API", "1.0.0"))
+            .bind("127.0.0.1:3002")
+            .nest("/v1", v1_routes)
+            .nest("/v2", v2_routes)
+            .build();
+
+        assert_eq!(server.address.to_string(), "127.0.0.1:3002");
+    }
+
+    #[tokio::test]
+    async fn test_feature_based_nesting() {
+        // Create user routes
+        #[derive(Clone)]
+        struct GetUser;
+
+        impl Endpoint for GetUser {
+            fn ep(&self) -> Route {
+                let mut route = Route::GET("/:id");
+                route.path_param("id").desc("User ID");
+                route
+            }
+
+            fn docs(&self) -> Option<Docs> {
+                Some(Docs::new().summary("Get user by ID").tag("users"))
+            }
+        }
+
+        #[async_trait::async_trait]
+        impl API for GetUser {
+            type Req = ();
+            type Res = String;
+
+            async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
+                format!("User {}", ctx.path.get("id").unwrap_or("unknown"))
+            }
+        }
+
+        let user_routes = Server::new().register(GetUser).build().into_router();
+
+        // Create post routes
+        #[derive(Clone)]
+        struct GetPost;
+
+        impl Endpoint for GetPost {
+            fn ep(&self) -> Route {
+                let mut route = Route::GET("/:id");
+                route.path_param("id").desc("Post ID");
+                route
+            }
+
+            fn docs(&self) -> Option<Docs> {
+                Some(Docs::new().summary("Get post by ID").tag("posts"))
+            }
+        }
+
+        #[async_trait::async_trait]
+        impl API for GetPost {
+            type Req = ();
+            type Res = String;
+
+            async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
+                format!("Post {}", ctx.path.get("id").unwrap_or("unknown"))
+            }
+        }
+
+        let post_routes = Server::new().register(GetPost).build().into_router();
+
+        // Nest under feature paths
+        let server = Server::new()
+            .with_openapi(OpenApiConfig::new("Feature API", "1.0.0"))
+            .bind("127.0.0.1:3003")
+            .nest("/users", user_routes)
+            .nest("/posts", post_routes)
+            .build();
+
+        assert_eq!(server.address.to_string(), "127.0.0.1:3003");
+    }
+
+    #[tokio::test]
+    async fn test_nest_service_external() {
+        // Create a simple service that responds with static text
+        let external_service = axum::routing::get(|| async { "External service response" });
+
+        // Test that we can nest external services using nest_service
+        let server = Server::new()
+            .with_openapi(OpenApiConfig::new("Service Nesting Test", "1.0.0"))
+            .bind("127.0.0.1:3004")
+            .register(TestEndpoint)
+            .nest_service("/external", external_service)
+            .build();
+
+        assert_eq!(server.address.to_string(), "127.0.0.1:3004");
     }
 }
