@@ -239,7 +239,7 @@ fn main() {
     ensure_rewrk_is_installed();
 
     // Start server with all benchmark endpoints
-    let server_handle = std::thread::spawn(|| {
+    std::thread::spawn(|| {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
             let config = AppConfig::new("Benchmark Server", "1.0.0")
@@ -291,29 +291,32 @@ fn main() {
 
     println!("{}", "=".repeat(80));
     println!("\nBenchmarks completed!");
-
-    // Keep server running to avoid cleanup issues
-    server_handle.join().unwrap();
+    println!("\nNote: Server process will exit automatically.");
 }
 
 fn run_benchmark(name: &str, method: &str, path: &str, body: Option<&str>) {
+    let url = format!("http://127.0.0.1:3030{}", path);
+
     let mut cmd = Command::new("rewrk");
-    cmd.args([
-        "-t",
-        "4", // 4 threads
-        "-c",
-        "100", // 100 connections
-        "-d",
-        "10s", // 10 second duration
-        "-h",
-        "http://127.0.0.1:3030",
-        "--pct", // Show percentiles
-        method,
-        path,
-    ]);
+    cmd.arg("-t")
+        .arg("4") // 4 threads
+        .arg("-c")
+        .arg("100") // 100 connections
+        .arg("-d")
+        .arg("10s") // 10 second duration
+        .arg("-h")
+        .arg(&url)
+        .arg("--pct"); // Show percentiles
+
+    if method != "GET" {
+        cmd.arg("-m").arg(method.to_lowercase());
+    }
 
     if let Some(body_content) = body {
-        cmd.args(["-b", body_content]);
+        cmd.arg("-H")
+            .arg("content-type: application/json")
+            .arg("-b")
+            .arg(body_content);
     }
 
     cmd.stdout(Stdio::inherit()).stderr(Stdio::inherit());
