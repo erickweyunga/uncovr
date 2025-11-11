@@ -22,12 +22,12 @@ use tower::Service;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::trace::{MakeSpan, OnResponse, TraceLayer};
 
-use crate::api::api::API;
+use crate::api::api::Handler;
 use crate::config::{AppConfig, CorsConfig};
 use crate::context::Context;
 use crate::openapi::{OpenApiConfig, serve_docs, serve_scalar_ui};
 use crate::server::endpoint::Endpoint as EndpointTrait;
-use crate::server::params::{PathParams, QueryParams};
+use crate::server::params::{Path, Query};
 
 /// Custom extractor for HTTP Extensions.
 ///
@@ -196,11 +196,11 @@ impl Server {
 /// }
 ///
 /// #[async_trait]
-/// impl API for HelloEndpoint {
-///     type Req = ();
-///     type Res = &'static str;
+/// impl Handler for HelloEndpoint {
+///     type Request = ();
+///     type Response = &'static str;
 ///
-///     async fn handler(&self, _ctx: Context<Self::Req>) -> Self::Res {
+///     async fn handle(&self, _ctx: Context<Self::Request>) -> Self::Response {
 ///         "Hello, World!"
 ///     }
 /// }
@@ -324,6 +324,37 @@ impl ServerBuilder {
         self
     }
 
+    /// Set application state that will be accessible in all handlers via `ctx.state()`.
+    ///
+    /// The state is stored in the request extensions and can be retrieved in handlers
+    /// using `ctx.state::<T>()`.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use uncovr::server::Server;
+    ///
+    /// #[derive(Clone)]
+    /// struct AppState {
+    ///     db: sqlx::PgPool,
+    /// }
+    ///
+    /// let state = AppState {
+    ///     db: create_pool().await,
+    /// };
+    ///
+    /// Server::new()
+    ///     .with_state(state)
+    ///     .register(MyEndpoint)
+    ///     .serve()
+    ///     .await
+    ///     .unwrap();
+    /// ```
+    pub fn with_state<S: Clone + Send + Sync + 'static>(mut self, state: S) -> Self {
+        self.router = self.router.layer(Extension(state));
+        self
+    }
+
     /// Register an API endpoint.
     ///
     /// This method uses the new Endpoint trait that separates route definition from documentation.
@@ -339,12 +370,12 @@ impl ServerBuilder {
     /// struct CreateUser;
     ///
     /// impl Endpoint for CreateUser {
-    ///     fn ep(&self) -> Route {
+    ///     fn route(&self) -> Route {
     ///         Route::POST("/users")
     ///     }
     ///
-    ///     fn docs(&self) -> Option<Docs> {
-    ///         Some(Docs::new().summary("Create a user"))
+    ///     fn meta(&self) -> Meta {
+    ///         Meta::new().summary("Create a user"))
     ///     }
     /// }
     ///
@@ -352,20 +383,20 @@ impl ServerBuilder {
     /// ```
     pub fn register<E>(mut self, endpoint: E) -> Self
     where
-        E: EndpointTrait + API + Send + Sync + 'static,
-        E::Req: serde::de::DeserializeOwned + schemars::JsonSchema + Default + Send + 'static,
-        E::Res: aide::OperationOutput + axum::response::IntoResponse + Send + 'static,
-        <E::Res as aide::OperationOutput>::Inner: schemars::JsonSchema,
+        E: EndpointTrait + Handler + Send + Sync + 'static,
+        E::Request: serde::de::DeserializeOwned + schemars::JsonSchema + Default + Send + 'static,
+        E::Response: aide::OperationOutput + axum::response::IntoResponse + Send + 'static,
+        <E::Response as aide::OperationOutput>::Inner: schemars::JsonSchema,
     {
-        let route_def = endpoint.ep();
-        let docs = endpoint.docs();
+        let route_def = endpoint.route();
+        let meta = endpoint.meta();
 
         let path = route_def.path;
         let method = route_def.method.as_str();
-        let summary = docs.as_ref().and_then(|d| d.summary).unwrap_or("");
-        let description = docs.as_ref().and_then(|d| d.description);
-        let tags = docs.as_ref().map(|d| d.tags.clone()).unwrap_or_default();
-        let response_config = docs.and_then(|d| d.response_config);
+        let summary = meta.summary.unwrap_or("");
+        let description = meta.description;
+        let tags = meta.tags.clone();
+        let response_config = meta.response_config;
 
         let endpoint = Arc::new(endpoint);
 
@@ -383,13 +414,13 @@ impl ServerBuilder {
                         let ep = Arc::clone(&ep);
                         async move {
                             let ctx = Context {
-                                req: E::Req::default(),
+                                req: E::Request::default(),
                                 headers: Default::default(),
-                                path: PathParams::new(path_params),
-                                query: QueryParams::new(query_params),
+                                path: Path::new(path_params),
+                                query: Query::new(query_params),
                                 extensions: ext,
                             };
-                            ep.handler(ctx).await
+                            ep.handle(ctx).await
                         }
                     },
                     |mut op| {
@@ -433,17 +464,17 @@ impl ServerBuilder {
                         std::collections::HashMap<String, String>,
                     >,
                           ExtractExtensions(ext): ExtractExtensions,
-                          axum::Json(payload): axum::Json<E::Req>| {
+                          axum::Json(payload): axum::Json<E::Request>| {
                         let ep = Arc::clone(&ep);
                         async move {
                             let ctx = Context {
                                 req: payload,
                                 headers: Default::default(),
-                                path: PathParams::new(path_params),
-                                query: QueryParams::new(query_params),
+                                path: Path::new(path_params),
+                                query: Query::new(query_params),
                                 extensions: ext,
                             };
-                            ep.handler(ctx).await
+                            ep.handle(ctx).await
                         }
                     },
                     |mut op| {
@@ -486,17 +517,17 @@ impl ServerBuilder {
                         std::collections::HashMap<String, String>,
                     >,
                           ExtractExtensions(ext): ExtractExtensions,
-                          axum::Json(payload): axum::Json<E::Req>| {
+                          axum::Json(payload): axum::Json<E::Request>| {
                         let ep = Arc::clone(&ep);
                         async move {
                             let ctx = Context {
                                 req: payload,
                                 headers: Default::default(),
-                                path: PathParams::new(path_params),
-                                query: QueryParams::new(query_params),
+                                path: Path::new(path_params),
+                                query: Query::new(query_params),
                                 extensions: ext,
                             };
-                            ep.handler(ctx).await
+                            ep.handle(ctx).await
                         }
                     },
                     |mut op| {
@@ -539,17 +570,17 @@ impl ServerBuilder {
                         std::collections::HashMap<String, String>,
                     >,
                           ExtractExtensions(ext): ExtractExtensions,
-                          axum::Json(payload): axum::Json<E::Req>| {
+                          axum::Json(payload): axum::Json<E::Request>| {
                         let ep = Arc::clone(&ep);
                         async move {
                             let ctx = Context {
                                 req: payload,
                                 headers: Default::default(),
-                                path: PathParams::new(path_params),
-                                query: QueryParams::new(query_params),
+                                path: Path::new(path_params),
+                                query: Query::new(query_params),
                                 extensions: ext,
                             };
-                            ep.handler(ctx).await
+                            ep.handle(ctx).await
                         }
                     },
                     |mut op| {
@@ -592,17 +623,17 @@ impl ServerBuilder {
                         std::collections::HashMap<String, String>,
                     >,
                           ExtractExtensions(ext): ExtractExtensions,
-                          axum::Json(payload): axum::Json<E::Req>| {
+                          axum::Json(payload): axum::Json<E::Request>| {
                         let ep = Arc::clone(&ep);
                         async move {
                             let ctx = Context {
                                 req: payload,
                                 headers: Default::default(),
-                                path: PathParams::new(path_params),
-                                query: QueryParams::new(query_params),
+                                path: Path::new(path_params),
+                                query: Query::new(query_params),
                                 extensions: ext,
                             };
-                            ep.handler(ctx).await
+                            ep.handle(ctx).await
                         }
                     },
                     |mut op| {
@@ -648,13 +679,13 @@ impl ServerBuilder {
                         let ep = Arc::clone(&ep);
                         async move {
                             let ctx = Context {
-                                req: E::Req::default(),
+                                req: E::Request::default(),
                                 headers: Default::default(),
-                                path: PathParams::new(path_params),
-                                query: QueryParams::new(query_params),
+                                path: Path::new(path_params),
+                                query: Query::new(query_params),
                                 extensions: ext,
                             };
-                            ep.handler(ctx).await
+                            ep.handle(ctx).await
                         }
                     },
                     |mut op| {
@@ -1031,21 +1062,21 @@ mod tests {
     }
 
     impl Endpoint for TestEndpoint {
-        fn ep(&self) -> Route {
-            Route::GET("/tests")
+        fn route(&self) -> Route {
+            Route::get("/tests")
         }
 
-        fn docs(&self) -> Option<Docs> {
-            Some(Docs::new().summary("Test endpoint"))
+        fn meta(&self) -> Meta {
+            Meta::new().summary("Test endpoint")
         }
     }
 
     #[async_trait::async_trait]
-    impl API for TestEndpoint {
-        type Req = TestRequest;
-        type Res = String;
+    impl Handler for TestEndpoint {
+        type Request = TestRequest;
+        type Response = String;
 
-        async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
+        async fn handle(&self, ctx: Context<Self::Request>) -> Self::Response {
             format!("Hello, {}!", ctx.req.name)
         }
     }
@@ -1076,21 +1107,21 @@ mod tests {
         }
 
         impl Endpoint for V2TestEndpoint {
-            fn ep(&self) -> Route {
-                Route::GET("/test")
+            fn route(&self) -> Route {
+                Route::get("/test")
             }
 
-            fn docs(&self) -> Option<Docs> {
-                Some(Docs::new().summary("V2 test endpoint"))
+            fn meta(&self) -> Meta {
+                Meta::new().summary("V2 test endpoint")
             }
         }
 
         #[async_trait::async_trait]
-        impl API for V2TestEndpoint {
-            type Req = TestRequest;
-            type Res = Json<V2Response>;
+        impl Handler for V2TestEndpoint {
+            type Request = TestRequest;
+            type Response = Json<V2Response>;
 
-            async fn handler(&self, _ctx: Context<Self::Req>) -> Self::Res {
+            async fn handle(&self, _ctx: Context<Self::Request>) -> Self::Response {
                 Json(V2Response {
                     version: "v2".to_string(),
                 })
@@ -1117,23 +1148,23 @@ mod tests {
         struct GetUser;
 
         impl Endpoint for GetUser {
-            fn ep(&self) -> Route {
-                let mut route = Route::GET("/:id");
+            fn route(&self) -> Route {
+                let mut route = Route::get("/:id");
                 route.path_param("id").desc("User ID");
                 route
             }
 
-            fn docs(&self) -> Option<Docs> {
-                Some(Docs::new().summary("Get user by ID").tag("users"))
+            fn meta(&self) -> Meta {
+                Meta::new().summary("Get user by ID").tag("users")
             }
         }
 
         #[async_trait::async_trait]
-        impl API for GetUser {
-            type Req = ();
-            type Res = String;
+        impl Handler for GetUser {
+            type Request = ();
+            type Response = String;
 
-            async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
+            async fn handle(&self, ctx: Context<Self::Request>) -> Self::Response {
                 format!("User {}", ctx.path.get("id").unwrap_or("unknown"))
             }
         }
@@ -1145,23 +1176,23 @@ mod tests {
         struct GetPost;
 
         impl Endpoint for GetPost {
-            fn ep(&self) -> Route {
-                let mut route = Route::GET("/:id");
+            fn route(&self) -> Route {
+                let mut route = Route::get("/:id");
                 route.path_param("id").desc("Post ID");
                 route
             }
 
-            fn docs(&self) -> Option<Docs> {
-                Some(Docs::new().summary("Get post by ID").tag("posts"))
+            fn meta(&self) -> Meta {
+                Meta::new().summary("Get post by ID").tag("posts")
             }
         }
 
         #[async_trait::async_trait]
-        impl API for GetPost {
-            type Req = ();
-            type Res = String;
+        impl Handler for GetPost {
+            type Request = ();
+            type Response = String;
 
-            async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
+            async fn handle(&self, ctx: Context<Self::Request>) -> Self::Response {
                 format!("Post {}", ctx.path.get("id").unwrap_or("unknown"))
             }
         }

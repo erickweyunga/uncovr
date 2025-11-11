@@ -1,18 +1,18 @@
-//! Core API traits for implementing endpoints
+//! Core Handler trait for implementing endpoints
 //!
-//! This module provides the core API trait that must be implemented by
+//! This module provides the core Handler trait that must be implemented by
 //! all endpoints in the application.
 
 use serde::de::DeserializeOwned;
 
 use crate::context::Context;
 
-/// API trait that must be implemented by all endpoints
+/// Handler trait that must be implemented by all endpoints
 ///
 /// This trait defines the core functionality required for API endpoints:
 /// - Request type (must be deserializable and implement Default)
-/// - Response type (must be serializable)
-/// - Handler logic (must return a Send future)
+/// - Response type (must be convertible to HTTP response)
+/// - Handle logic (must return a Send future)
 ///
 /// # Example
 ///
@@ -20,12 +20,12 @@ use crate::context::Context;
 /// use uncovr::prelude::*;
 /// use serde::{Deserialize, Serialize};
 ///
-/// #[derive(Deserialize, Default)]
+/// #[derive(Deserialize, JsonSchema, Default)]
 /// struct GreetRequest {
 ///     name: String,
 /// }
 ///
-/// #[derive(Serialize)]
+/// #[derive(Serialize, JsonSchema)]
 /// struct GreetResponse {
 ///     message: String,
 /// }
@@ -33,34 +33,56 @@ use crate::context::Context;
 /// struct GreetEndpoint;
 ///
 /// #[async_trait]
-/// impl API for GreetEndpoint {
-///     type Req = GreetRequest;
-///     type Res = GreetResponse;
+/// impl Handler for GreetEndpoint {
+///     type Request = GreetRequest;
+///     type Response = Json<GreetResponse>;
 ///
-///     async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
-///         GreetResponse {
+///     async fn handle(&self, ctx: Context<Self::Request>) -> Self::Response {
+///         Json(GreetResponse {
 ///             message: format!("Hello, {}!", ctx.req.name)
-///         }
+///         })
 ///     }
 /// }
 /// ```
 #[async_trait::async_trait]
-pub trait API {
+pub trait Handler {
     /// The request type for this endpoint.
     /// Must implement DeserializeOwned and Default.
-    type Req: DeserializeOwned + Default + Send + 'static;
+    type Request: DeserializeOwned + Default + Send + 'static;
 
     /// The response type for this endpoint.
-    /// Must implement Serialize.
-    type Res: Send + 'static;
+    /// Must implement IntoResponse (from Axum).
+    type Response: Send + 'static;
 
-    /// Handler logic for this endpoint.
+    /// Handle the request for this endpoint.
     ///
-    /// Takes a Context containing the deserialized request and headers,
-    /// and returns a future that resolves to the response.
+    /// Takes a Context containing the deserialized request, path/query parameters,
+    /// headers, and state access, and returns a future that resolves to the response.
     ///
     /// The returned future must be Send to support async execution
     /// across thread boundaries.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// async fn handle(&self, ctx: Context<Self::Request>) -> Self::Response {
+    ///     let id = ctx.path.parse::<i64>("id")?;
+    ///     let state = ctx.state::<AppState>();
+    ///
+    ///     let user = fetch_user(&state.db, id).await?;
+    ///     Ok(Json(user))
+    /// }
+    /// ```
+    async fn handle(&self, ctx: Context<Self::Request>) -> Self::Response
+    where
+        Self: Send + Sync;
+}
+
+/// Legacy type alias for backward compatibility during migration
+#[deprecated(since = "0.3.0", note = "Use `Handler` instead")]
+pub trait API: Handler {
+    type Req;
+    type Res;
     async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res
     where
         Self: Send + Sync;
@@ -87,11 +109,11 @@ mod tests {
     struct TestEndpoint;
 
     #[async_trait::async_trait]
-    impl API for TestEndpoint {
-        type Req = TestRequest;
-        type Res = TestResponse;
+    impl Handler for TestEndpoint {
+        type Request = TestRequest;
+        type Response = TestResponse;
 
-        async fn handler(&self, ctx: Context<Self::Req>) -> Self::Res {
+        async fn handle(&self, ctx: Context<Self::Request>) -> Self::Response {
             TestResponse {
                 echo: ctx.req.message,
             }
@@ -106,12 +128,12 @@ mod tests {
                 message: "hello".into(),
             },
             headers: Arc::new(HeaderMap::new()),
-            path: crate::server::PathParams::empty(),
-            query: crate::server::QueryParams::empty(),
+            path: crate::server::Path::empty(),
+            query: crate::server::Query::empty(),
             extensions: Extensions::new(),
         };
 
-        let response = endpoint.handler(ctx).await;
+        let response = endpoint.handle(ctx).await;
         assert_eq!(
             response,
             TestResponse {

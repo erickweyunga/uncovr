@@ -4,21 +4,23 @@
 //! needed to build APIs with uncover.
 
 // Re-export core traits and types
-pub use crate::api::api::API;
-pub use crate::api::response::{ApiResponse, ErrorResponse};
+pub use crate::api::api::Handler;
+pub use crate::api::response::{Error, Response};
 pub use crate::config::{AppConfig, CorsConfig, Environment, LogFormat, LogLevel, LoggingConfig};
 pub use crate::context::Context;
 pub use crate::logging;
 pub use crate::server::{
-    Docs, Endpoint, HttpMethod, PathParam, PathParams, QueryParam, QueryParams, ResponseCallback,
-    Route,
+    Endpoint, HttpMethod, Meta, PathParam, QueryParam, ResponseCallback, Route,
 };
+
+// Re-export parameter types (avoid conflict with axum::extract::Path/Query)
+pub use crate::server::params::{Path as PathParams, Query as QueryParams};
 
 // Re-export axum types
 pub use axum::Json;
-pub use axum::extract::{Json as AxumJson, Path, Query, State};
+pub use axum::extract::{Path as AxumPath, Query as AxumQuery, State};
 pub use axum::http::{HeaderMap, StatusCode};
-pub use axum::response::{IntoResponse, Response};
+pub use axum::response::{IntoResponse, Response as AxumResponse};
 
 // Re-export schemars
 pub use schemars;

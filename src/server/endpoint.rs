@@ -1,25 +1,24 @@
 //! Endpoint definition module for Uncovr framework.
 //!
-//! This module provides a clean separation between route definition and documentation.
+//! This module provides a clean separation between route definition and metadata (documentation).
 //!
 //! # Example
 //!
 //! ```no_run
-//! use uncovr::server::endpoint::{Endpoint, Route, Docs};
+//! use uncovr::server::endpoint::{Endpoint, Route, Meta};
 //!
 //! struct CreateUser;
 //!
 //! impl Endpoint for CreateUser {
-//!     fn ep(&self) -> Route {
-//!         Route::POST("/users")
-//!             .query("notify")
+//!     fn route(&self) -> Route {
+//!         Route::post("/users")
 //!     }
 //!
-//!     fn docs(&self) -> Option<Docs> {
-//!         Some(Docs::new()
+//!     fn meta(&self) -> Meta {
+//!         Meta::new()
 //!             .summary("Create a new user")
-//!             .description("Creates a user with the provided information")
-//!             .tag("users"))
+//!             .describe("Creates a user with the provided information")
+//!             .tag("users")
 //!     }
 //! }
 //! ```
@@ -130,9 +129,9 @@ impl<'a> ParamBuilder<'a> {
 /// ```
 /// use uncovr::server::endpoint::Route;
 ///
-/// let route = Route::POST("/users/:id")
-///     .path_param("id").required().desc("User ID")
-///     .query("notify").desc("Send notification");
+/// let route = Route::post("/users/:id")
+///     .param("id", "User ID")
+///     .query("notify");
 /// ```
 #[derive(Debug, Clone)]
 pub struct Route {
@@ -153,89 +152,82 @@ impl Route {
         }
     }
 
-    /// Create a GET route.
-    #[allow(non_snake_case)]
+    /// Create a GET route (lowercase, following Rust conventions).
     ///
     /// # Example
     ///
     /// ```
     /// use uncovr::server::endpoint::Route;
     ///
-    /// let route = Route::GET("/users");
+    /// let route = Route::get("/users");
     /// ```
-    pub fn GET(path: &'static str) -> Self {
+    pub fn get(path: &'static str) -> Self {
         Self::new(HttpMethod::GET, path)
     }
 
-    /// Create a POST route.
-    #[allow(non_snake_case)]
+    /// Create a POST route (lowercase, following Rust conventions).
     ///
     /// # Example
     ///
     /// ```
     /// use uncovr::server::endpoint::Route;
     ///
-    /// let route = Route::POST("/users");
+    /// let route = Route::post("/users");
     /// ```
-    pub fn POST(path: &'static str) -> Self {
+    pub fn post(path: &'static str) -> Self {
         Self::new(HttpMethod::POST, path)
     }
 
-    /// Create a PUT route.
-    #[allow(non_snake_case)]
+    /// Create a PUT route (lowercase, following Rust conventions).
     ///
     /// # Example
     ///
     /// ```
     /// use uncovr::server::endpoint::Route;
     ///
-    /// let route = Route::PUT("/users/:id");
+    /// let route = Route::put("/users/:id");
     /// ```
-    pub fn PUT(path: &'static str) -> Self {
+    pub fn put(path: &'static str) -> Self {
         Self::new(HttpMethod::PUT, path)
     }
 
-    /// Create a PATCH route.
-    #[allow(non_snake_case)]
+    /// Create a PATCH route (lowercase, following Rust conventions).
     ///
     /// # Example
     ///
     /// ```
     /// use uncovr::server::endpoint::Route;
     ///
-    /// let route = Route::PATCH("/users/:id");
+    /// let route = Route::patch("/users/:id");
     /// ```
-    pub fn PATCH(path: &'static str) -> Self {
+    pub fn patch(path: &'static str) -> Self {
         Self::new(HttpMethod::PATCH, path)
     }
 
-    /// Create a DELETE route.
-    #[allow(non_snake_case)]
+    /// Create a DELETE route (lowercase, following Rust conventions).
     ///
     /// # Example
     ///
     /// ```
     /// use uncovr::server::endpoint::Route;
     ///
-    /// let route = Route::DELETE("/users/:id");
+    /// let route = Route::delete("/users/:id");
     /// ```
-    pub fn DELETE(path: &'static str) -> Self {
+    pub fn delete(path: &'static str) -> Self {
         Self::new(HttpMethod::DELETE, path)
     }
 
-    /// Create an OPTIONS route.
-    #[allow(non_snake_case)]
-    pub fn OPTIONS(path: &'static str) -> Self {
+    /// Create an OPTIONS route (lowercase, following Rust conventions).
+    pub fn options(path: &'static str) -> Self {
         Self::new(HttpMethod::OPTIONS, path)
     }
 
-    /// Create a HEAD route.
-    #[allow(non_snake_case)]
-    pub fn HEAD(path: &'static str) -> Self {
+    /// Create a HEAD route (lowercase, following Rust conventions).
+    pub fn head(path: &'static str) -> Self {
         Self::new(HttpMethod::HEAD, path)
     }
 
-    /// Add a query parameter.
+    /// Add a query parameter with optional description.
     ///
     /// Returns a mutable reference to self for further chaining,
     /// or use `.required()` or `.desc()` to configure the parameter.
@@ -245,7 +237,7 @@ impl Route {
     /// ```
     /// use uncovr::server::endpoint::Route;
     ///
-    /// let route = Route::GET("/users")
+    /// let route = Route::get("/users")
     ///     .query("page")
     ///     .query("limit").required();
     /// ```
@@ -263,18 +255,38 @@ impl Route {
         }
     }
 
-    /// Add a path parameter.
+    /// Add a path parameter with description (shorthand method).
     ///
-    /// Returns a mutable reference to self for further chaining,
-    /// or use `.required()` or `.desc()` to configure the parameter.
+    /// This is a convenience method that combines adding a parameter and description.
     ///
     /// # Example
     ///
     /// ```
     /// use uncovr::server::endpoint::Route;
     ///
-    /// let route = Route::DELETE("/users/:id")
-    ///     .path_param("id").required().desc("User ID");
+    /// let route = Route::delete("/users/:id")
+    ///     .param("id", "User ID");
+    /// ```
+    pub fn param(mut self, name: &'static str, description: &'static str) -> Self {
+        self.path_params.push(PathParam {
+            name,
+            description: Some(description),
+            required: true,
+        });
+        self
+    }
+
+    /// Add a path parameter (legacy method for backward compatibility).
+    ///
+    /// Returns a builder for fluent configuration.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use uncovr::server::endpoint::Route;
+    ///
+    /// let route = Route::delete("/users/:id")
+    ///     .path_param("id").desc("User ID").required();
     /// ```
     pub fn path_param(&mut self, name: &'static str) -> ParamBuilder<'_> {
         self.path_params.push(PathParam {
@@ -296,7 +308,7 @@ pub type ResponseCallback = Box<
     dyn FnOnce(aide::transform::TransformOperation) -> aide::transform::TransformOperation + Send,
 >;
 
-/// Documentation for an API endpoint.
+/// Metadata for an API endpoint.
 ///
 /// Provides human-readable information about the endpoint for API documentation
 /// and OpenAPI specification generation.
@@ -304,16 +316,16 @@ pub type ResponseCallback = Box<
 /// # Example
 ///
 /// ```
-/// use uncovr::server::endpoint::Docs;
+/// use uncovr::server::endpoint::Meta;
 ///
-/// let docs = Docs::new()
+/// let meta = Meta::new()
 ///     .summary("Create a new user")
-///     .description("Creates a user with the provided information")
+///     .describe("Creates a user with the provided information")
 ///     .tag("users")
 ///     .tag("authentication");
 /// ```
 #[derive(Default)]
-pub struct Docs {
+pub struct Meta {
     pub summary: Option<&'static str>,
     pub description: Option<&'static str>,
     pub tags: Vec<&'static str>,
@@ -321,8 +333,8 @@ pub struct Docs {
     pub response_config: Option<ResponseCallback>,
 }
 
-impl Docs {
-    /// Create a new documentation builder.
+impl Meta {
+    /// Create a new metadata builder.
     pub fn new() -> Self {
         Self::default()
     }
@@ -332,9 +344,9 @@ impl Docs {
     /// # Example
     ///
     /// ```
-    /// use uncovr::server::endpoint::Docs;
+    /// use uncovr::server::endpoint::Meta;
     ///
-    /// let docs = Docs::new().summary("Get all users");
+    /// let meta = Meta::new().summary("Get all users");
     /// ```
     pub fn summary(mut self, text: &'static str) -> Self {
         self.summary = Some(text);
@@ -343,18 +355,27 @@ impl Docs {
 
     /// Set the detailed description for the endpoint.
     ///
+    /// Renamed from `description` to `describe` for verb consistency.
+    ///
     /// # Example
     ///
     /// ```
-    /// use uncovr::server::endpoint::Docs;
+    /// use uncovr::server::endpoint::Meta;
     ///
-    /// let docs = Docs::new()
+    /// let meta = Meta::new()
     ///     .summary("Create user")
-    ///     .description("Creates a new user account with the provided information. Requires admin privileges.");
+    ///     .describe("Creates a new user account with the provided information. Requires admin privileges.");
     /// ```
-    pub fn description(mut self, text: &'static str) -> Self {
+    pub fn describe(mut self, text: &'static str) -> Self {
         self.description = Some(text);
         self
+    }
+
+    /// Set the detailed description for the endpoint (alias for backward compatibility).
+    ///
+    /// Use `describe()` for verb consistency in new code.
+    pub fn description(self, text: &'static str) -> Self {
+        self.describe(text)
     }
 
     /// Add a tag to categorize the endpoint.
@@ -364,9 +385,9 @@ impl Docs {
     /// # Example
     ///
     /// ```
-    /// use uncovr::server::endpoint::Docs;
+    /// use uncovr::server::endpoint::Meta;
     ///
-    /// let docs = Docs::new()
+    /// let meta = Meta::new()
     ///     .summary("Get user")
     ///     .tag("users")
     ///     .tag("public");
@@ -381,9 +402,9 @@ impl Docs {
     /// # Example
     ///
     /// ```
-    /// use uncovr::server::endpoint::Docs;
+    /// use uncovr::server::endpoint::Meta;
     ///
-    /// let docs = Docs::new()
+    /// let meta = Meta::new()
     ///     .summary("Old API endpoint")
     ///     .deprecated();
     /// ```
@@ -399,7 +420,7 @@ impl Docs {
     /// # Example
     ///
     /// ```no_run
-    /// use uncovr::server::endpoint::Docs;
+    /// use uncovr::server::endpoint::Meta;
     /// use uncovr::prelude::*;
     /// # struct UserResponse;
     /// # impl schemars::JsonSchema for UserResponse {
@@ -409,12 +430,12 @@ impl Docs {
     /// #     }
     /// # }
     ///
-    /// let docs = Docs::new()
+    /// let meta = Meta::new()
     ///     .summary("Get user")
     ///     .responses(|op| {
     ///         op.response::<200, Json<UserResponse>>()
-    ///           .response::<404, Json<ErrorResponse>>()
-    ///           .response::<500, Json<ErrorResponse>>()
+    ///           .response::<404, Json<Error>>()
+    ///           .response::<500, Json<Error>>()
     ///     });
     /// ```
     pub fn responses<F>(mut self, callback: F) -> Self
@@ -430,28 +451,28 @@ impl Docs {
 
 /// Trait for defining API endpoints.
 ///
-/// Separates route definition from documentation, allowing optional documentation
-/// and better separation of concerns.
+/// Separates route definition from metadata (documentation), providing clear
+/// separation of concerns.
 ///
 /// # Example
 ///
 /// ```no_run
-/// use uncovr::server::endpoint::{Endpoint, Route, Docs};
+/// use uncovr::server::endpoint::{Endpoint, Route, Meta};
 ///
 /// struct GetUsers;
 ///
 /// impl Endpoint for GetUsers {
-///     fn ep(&self) -> Route {
-///         Route::GET("/users")
+///     fn route(&self) -> Route {
+///         Route::get("/users")
 ///             .query("page")
 ///             .query("limit").required()
 ///     }
 ///
-///     fn docs(&self) -> Option<Docs> {
-///         Some(Docs::new()
+///     fn meta(&self) -> Meta {
+///         Meta::new()
 ///             .summary("List all users")
-///             .description("Returns a paginated list of users")
-///             .tag("users"))
+///             .describe("Returns a paginated list of users")
+///             .tag("users")
 ///     }
 /// }
 /// ```
@@ -459,16 +480,19 @@ pub trait Endpoint {
     /// Define the route (path, method, parameters).
     ///
     /// This is the core routing definition for the endpoint.
-    fn ep(&self) -> Route;
+    fn route(&self) -> Route;
 
-    /// Optional documentation for the endpoint.
+    /// Define metadata (documentation) for the endpoint.
     ///
-    /// Return `None` for quick prototyping or internal endpoints.
-    /// Return `Some(Docs)` for production APIs with full documentation.
-    fn docs(&self) -> Option<Docs> {
-        None
+    /// Always return metadata for proper API documentation.
+    fn meta(&self) -> Meta {
+        Meta::new()
     }
 }
+
+/// Legacy type alias for backward compatibility during migration
+#[deprecated(since = "0.3.0", note = "Use `Meta` instead")]
+pub type Docs = Meta;
 
 #[cfg(test)]
 mod tests {
@@ -484,17 +508,17 @@ mod tests {
 
     #[test]
     fn test_route_builders() {
-        let route = Route::GET("/users");
+        let route = Route::get("/users");
         assert_eq!(route.path, "/users");
         assert_eq!(route.method, HttpMethod::GET);
 
-        let route = Route::POST("/users");
+        let route = Route::post("/users");
         assert_eq!(route.method, HttpMethod::POST);
     }
 
     #[test]
     fn test_route_with_params() {
-        let mut route = Route::GET("/users");
+        let mut route = Route::get("/users");
         route.query("page").required();
         route.query("limit");
 
@@ -506,35 +530,34 @@ mod tests {
     }
 
     #[test]
-    fn test_docs_builder() {
-        let docs = Docs::new()
+    fn test_meta_builder() {
+        let meta = Meta::new()
             .summary("Test endpoint")
-            .description("This is a test")
+            .describe("This is a test")
             .tag("test")
             .tag("example")
             .deprecated();
 
-        assert_eq!(docs.summary, Some("Test endpoint"));
-        assert_eq!(docs.description, Some("This is a test"));
-        assert_eq!(docs.tags.len(), 2);
-        assert!(docs.deprecated);
+        assert_eq!(meta.summary, Some("Test endpoint"));
+        assert_eq!(meta.description, Some("This is a test"));
+        assert_eq!(meta.tags.len(), 2);
+        assert!(meta.deprecated);
     }
 
     struct TestEndpoint;
 
     impl Endpoint for TestEndpoint {
-        fn ep(&self) -> Route {
-            Route::GET("/test")
+        fn route(&self) -> Route {
+            Route::get("/test")
         }
     }
 
     #[test]
     fn test_endpoint_trait() {
         let endpoint = TestEndpoint;
-        let route = endpoint.ep();
+        let route = endpoint.route();
 
         assert_eq!(route.path, "/test");
         assert_eq!(route.method, HttpMethod::GET);
-        assert!(endpoint.docs().is_none());
     }
 }

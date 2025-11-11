@@ -322,8 +322,8 @@ mod tests {
         let ctx = Context::<()> {
             req: (),
             headers: Default::default(),
-            path: crate::server::PathParams::new(Default::default()),
-            query: crate::server::QueryParams::new(Default::default()),
+            path: crate::server::Path::new(Default::default()),
+            query: crate::server::Query::new(Default::default()),
             extensions: Default::default(),
         };
 

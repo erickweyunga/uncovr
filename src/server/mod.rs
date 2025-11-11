@@ -12,21 +12,21 @@
 //! pub struct Hello;
 //!
 //! impl Endpoint for Hello {
-//!     fn ep(&self) -> Route {
-//!         Route::GET("/hello")
+//!     fn route(&self) -> Route {
+//!         Route::get("/hello")
 //!     }
 //!
-//!     fn docs(&self) -> Option<Docs> {
-//!         Some(Docs::new().summary("Say hello"))
+//!     fn meta(&self) -> Meta {
+//!         Meta::new().summary("Say hello")
 //!     }
 //! }
 //!
 //! #[async_trait]
-//! impl API for Hello {
-//!     type Req = ();
-//!     type Res = &'static str;
+//! impl Handler for Hello {
+//!     type Request = ();
+//!     type Response = &'static str;
 //!
-//!     async fn handler(&self, _ctx: Context<Self::Req>) -> Self::Res {
+//!     async fn handle(&self, _ctx: Context<Self::Request>) -> Self::Response {
 //!         "Hello, World!"
 //!     }
 //! }
@@ -50,6 +50,6 @@ pub mod params;
 mod router;
 
 pub use builder::{Server, ServerBuilder};
-pub use endpoint::{Docs, Endpoint, HttpMethod, PathParam, QueryParam, ResponseCallback, Route};
-pub use params::{PathParams, QueryParams};
+pub use endpoint::{Endpoint, HttpMethod, Meta, PathParam, QueryParam, ResponseCallback, Route};
+pub use params::{Path, Query};
 pub use router::RouterExt;

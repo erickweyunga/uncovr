@@ -21,7 +21,7 @@ exclude = [
 ]
 
 [workspace]
-members = [".", "examples/api", "examples/auth-jwt", "examples/routes", "examples/url-shortner", "examples/nested-services", "examples/live-reload"]
+members = ["."]
 resolver = "2"
 
 [features]
