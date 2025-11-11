@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::time::Duration;
 use std::{convert::Infallible, net::SocketAddr};
 use tokio::net::TcpListener;
 
@@ -14,16 +13,15 @@ use aide::openapi::{
 use axum::{Extension, async_trait, body::Body};
 use axum::{
     extract::FromRequestParts,
-    http::{HeaderValue, Method, Request, Response, request::Parts},
+    http::{Request, Response, request::Parts},
 };
 use http::Extensions;
 use schemars::schema::{InstanceType, Schema, SchemaObject as SchemarsSchemaObject};
 use tower::Service;
-use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::trace::{MakeSpan, OnResponse, TraceLayer};
 
 use crate::api::api::Handler;
-use crate::config::{AppConfig, CorsConfig};
+use crate::config::AppConfig;
 use crate::context::Context;
 use crate::openapi::{OpenApiConfig, serve_docs, serve_scalar_ui};
 use crate::server::endpoint::Endpoint as EndpointTrait;
@@ -223,6 +221,7 @@ pub struct ServerBuilder {
     address: String,
     openapi: Option<aide::openapi::OpenApi>,
     config: Option<AppConfig>,
+    logging: Option<crate::config::LoggingConfig>,
 }
 
 impl Default for ServerBuilder {
@@ -232,6 +231,7 @@ impl Default for ServerBuilder {
             address: "127.0.0.1:3000".to_string(),
             openapi: None,
             config: None,
+            logging: None,
         }
     }
 }
@@ -321,6 +321,30 @@ impl ServerBuilder {
     pub fn with_openapi(mut self, config: OpenApiConfig) -> Self {
         let api = config.build();
         self.openapi = Some(api);
+        self
+    }
+
+    /// Configure logging for the server
+    ///
+    /// This is now separate from AppConfig for better modularity.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use uncovr::server::Server;
+    /// use uncovr::config::{AppConfig, LoggingConfig};
+    ///
+    /// let config = AppConfig::new("My API", "1.0.0");
+    ///
+    /// Server::new()
+    ///     .with_config(config)
+    ///     .with_logging(LoggingConfig::development())
+    ///     .serve()
+    ///     .await
+    ///     .unwrap();
+    /// ```
+    pub fn with_logging(mut self, logging: crate::config::LoggingConfig) -> Self {
+        self.logging = Some(logging);
         self
     }
 
@@ -774,26 +798,16 @@ impl ServerBuilder {
 
     /// Build the server with the configured options
     pub fn build(mut self) -> Server {
-        // Initialize logging if config is available
-        if let Some(ref config) = self.config {
-            crate::logging::init(&config.logging);
+        // Initialize logging if configured
+        if let Some(ref logging) = self.logging {
+            crate::logging::init(logging);
         }
 
-        // Get CORS config from AppConfig or use restrictive default
-        let cors_config = self
-            .config
-            .as_ref()
-            .map(|c| c.cors.clone())
-            .unwrap_or_default();
-
-        // Build CORS layer based on configuration
-        let cors = self.build_cors_layer(&cors_config);
-
-        // Build trace layer for request logging
+        // Build trace layer for request logging if enabled
         let trace_layer = if self
-            .config
+            .logging
             .as_ref()
-            .map(|c| c.logging.enabled && c.logging.log_requests)
+            .map(|c| c.log_requests)
             .unwrap_or(false)
         {
             Some(
@@ -838,16 +852,13 @@ impl ServerBuilder {
             let mut api = api.clone();
             let router = self.router.finish_api(&mut api);
 
-            self.router = docs_router.merge(router).layer(Extension(api)).layer(cors);
+            self.router = docs_router.merge(router).layer(Extension(api));
 
             // Apply trace layer if enabled
             if let Some(trace) = trace_layer {
                 self.router = self.router.layer(trace);
             }
         } else {
-            // Apply CORS even without OpenAPI
-            self.router = self.router.layer(cors);
-
             // Apply trace layer if enabled
             if let Some(trace) = trace_layer {
                 self.router = self.router.layer(trace);
@@ -862,62 +873,6 @@ impl ServerBuilder {
     }
 
     /// Build a CORS layer from configuration
-    fn build_cors_layer(&self, config: &CorsConfig) -> CorsLayer {
-        let mut cors = CorsLayer::new();
-
-        // Configure origins
-        if config.allows_all_origins() {
-            cors = cors.allow_origin(Any);
-        } else {
-            let origins: Vec<HeaderValue> = config
-                .allowed_origins
-                .iter()
-                .filter_map(|origin| origin.parse().ok())
-                .collect();
-
-            if !origins.is_empty() {
-                cors = cors.allow_origin(AllowOrigin::list(origins));
-            }
-        }
-
-        // Configure methods
-        let methods: Vec<Method> = config
-            .allowed_methods
-            .iter()
-            .filter_map(|method| method.parse().ok())
-            .collect();
-
-        if !methods.is_empty() {
-            cors = cors.allow_methods(methods);
-        }
-
-        // Configure headers
-        if config.allowed_headers.contains(&"*".to_string()) {
-            cors = cors.allow_headers(Any);
-        } else {
-            let headers: Vec<axum::http::HeaderName> = config
-                .allowed_headers
-                .iter()
-                .filter_map(|header| header.parse().ok())
-                .collect();
-
-            if !headers.is_empty() {
-                cors = cors.allow_headers(headers);
-            }
-        }
-
-        // Configure credentials
-        if config.allow_credentials {
-            cors = cors.allow_credentials(true);
-        }
-
-        // Configure max age
-        if let Some(max_age) = config.max_age {
-            cors = cors.max_age(Duration::from_secs(max_age));
-        }
-
-        cors
-    }
 
     /// Build and start serving the application.
     ///

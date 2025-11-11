@@ -24,9 +24,11 @@
 //! ```
 
 mod auth;
+mod cors;
 mod rate_limit;
 mod request_id;
 
 pub use auth::BearerAuth;
+pub use cors::Cors;
 pub use rate_limit::RateLimit;
 pub use request_id::RequestId;
