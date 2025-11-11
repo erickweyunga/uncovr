@@ -2,7 +2,7 @@
 //!
 //! Import everything you need with `use uncovr::prelude::*;`
 
-// Core Uncovr types - no renaming
+// Core Uncovr types
 pub use crate::api::api::Handler;
 pub use crate::api::response::{Error, Response};
 pub use crate::config::{App, LogFormat, LogLevel, Logging};
@@ -15,11 +15,11 @@ pub use async_trait::async_trait;
 pub use schemars::JsonSchema;
 pub use serde::{Deserialize, Serialize};
 
-// Axum types (can rename to avoid conflicts)
+// Axum types
 pub use axum::Json;
 pub use axum::http::{HeaderMap, StatusCode};
 pub use axum::response::IntoResponse;
 
-// Validation (optional)
+// Validation
 #[cfg(feature = "validation")]
 pub use validator::{Validate, ValidationError, ValidationErrors};

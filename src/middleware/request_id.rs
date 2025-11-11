@@ -7,10 +7,10 @@ use axum::{
 use tower::{Layer, Service};
 use uuid::Uuid;
 
-/// Middleware that adds a unique request ID to each request
+/// Request ID middleware for tracing requests across uncovr applications.
 ///
-/// Adds an `X-Request-Id` header to both the request and response.
-/// If the request already has an `X-Request-Id` header, it will be preserved.
+/// Generates unique identifiers for each request and adds them to both request and response headers.
+/// Preserves existing request IDs when present, enabling distributed tracing across services.
 ///
 /// # Example
 ///
@@ -29,22 +29,14 @@ pub struct RequestId {
 }
 
 impl RequestId {
-    /// Create a new RequestId middleware with default header name "x-request-id"
+    /// Creates a RequestId middleware with the default header name `x-request-id`.
     pub fn new() -> Self {
         Self {
             header_name: "x-request-id".to_string(),
         }
     }
 
-    /// Create a new RequestId middleware with a custom header name
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use uncovr::middleware::RequestId;
-    ///
-    /// let middleware = RequestId::with_header("x-correlation-id");
-    /// ```
+    /// Creates a RequestId middleware with the specified header name.
     pub fn with_header(header_name: impl Into<String>) -> Self {
         Self {
             header_name: header_name.into(),

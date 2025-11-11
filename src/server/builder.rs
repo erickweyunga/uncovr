@@ -29,7 +29,11 @@ use crate::server::params::{Path, Query};
 
 /// Custom extractor for HTTP Extensions.
 ///
-/// This extractor allows us to extract the entire Extensions map from the request.
+/// This internal extractor allows uncovr to extract the entire Extensions map from incoming requests
+/// and pass it through to the [`Context`], enabling handlers to access application state and
+/// request-scoped data via `ctx.state::<T>()`.
+///
+/// This is part of uncovr's abstraction layer that hides Axum implementation details from users.
 #[derive(OperationIo)]
 #[aide(input)]
 struct ExtractExtensions(Extensions);
@@ -46,7 +50,10 @@ where
     }
 }
 
-/// Custom request span maker for cleaner logs
+/// Custom request span maker for structured logging.
+///
+/// Creates tracing spans for HTTP requests with method and path information.
+/// This enables uncovr's logging system to provide clean, structured request logs.
 #[derive(Clone)]
 struct RequestSpanMaker;
 
@@ -62,10 +69,12 @@ impl<B> MakeSpan<B> for RequestSpanMaker {
 
 /// Custom response logger with minimal output.
 ///
-/// Log levels based on response status:
-/// - 5xx errors: ERROR level
-/// - 4xx errors: WARN level
-/// - 2xx/3xx success: DEBUG level (not INFO to reduce noise)
+/// Logs HTTP responses with appropriate severity based on status code:
+/// - 5xx errors: ERROR level (server errors that need immediate attention)
+/// - 4xx errors: WARN level (client errors worth monitoring)
+/// - 2xx/3xx success: DEBUG level (reduces noise in production logs)
+///
+/// Latency is automatically formatted with appropriate units (ms/µs).
 #[derive(Clone)]
 struct RequestLogger;
 
@@ -211,7 +220,11 @@ impl Default for ServerBuilder {
     }
 }
 
-/// Parameter information for OpenAPI documentation (internal helper)
+/// Parameter information for OpenAPI documentation (internal helper).
+///
+/// This internal structure represents metadata about route parameters (query and path)
+/// that will be converted to OpenAPI parameter specifications. It's part of uncovr's
+/// automatic OpenAPI documentation generation.
 #[derive(Debug, Clone)]
 struct ParamInfo {
     /// Parameter name
@@ -222,7 +235,11 @@ struct ParamInfo {
     required: bool,
 }
 
-/// Helper function to convert ParamInfo to aide's Parameter type for OpenAPI
+/// Helper function to convert ParamInfo to aide's Parameter type for OpenAPI.
+///
+/// Transforms uncovr's parameter representation into OpenAPI 3.0 parameter specifications
+/// for automatic documentation generation. This keeps the high-level uncovr API simple
+/// while ensuring proper OpenAPI schema generation.
 fn param_info_to_query_param(param: &ParamInfo) -> ReferenceOr<Parameter> {
     ReferenceOr::Item(Parameter::Query {
         parameter_data: ParameterData {
@@ -354,31 +371,66 @@ impl ServerBuilder {
         self
     }
 
-    /// Register an API endpoint.
+    /// Register an API endpoint with automatic routing and OpenAPI documentation.
     ///
-    /// This method uses the new Endpoint trait that separates route definition from documentation.
+    /// This is the core method for adding endpoints to your uncovr application. It handles:
+    /// - **Route registration**: Extracts path, method, and parameters from `Endpoint::route()`
+    /// - **Request handling**: Wires up the `Handler::handle()` method with proper context
+    /// - **OpenAPI documentation**: Auto-generates schema from `Endpoint::meta()` and type information
+    /// - **Type safety**: Ensures request/response types implement necessary traits at compile time
+    ///
+    /// # Type Parameters
+    ///
+    /// * `E` - The endpoint type that implements both [`Endpoint`] and [`Handler`]
+    ///
+    /// # Generic Bounds
+    ///
+    /// The endpoint must satisfy:
+    /// - `E::Request`: Deserializable from JSON and has a default (for GET requests without body)
+    /// - `E::Response`: Convertible to HTTP response and has OpenAPI schema information
+    /// - All types are `Send + 'static` for async runtime compatibility
     ///
     /// # Example
     ///
     /// ```no_run
+    /// use uncovr::prelude::*;
     /// use uncovr::server::Server;
-    /// use uncovr::server::endpoint::{Endpoint, Route, Docs};
-    /// use uncovr::api::API;
     ///
     /// #[derive(Clone)]
     /// struct CreateUser;
     ///
     /// impl Endpoint for CreateUser {
     ///     fn route(&self) -> Route {
-    ///         Route::POST("/users")
+    ///         Route::post("/users")
     ///     }
     ///
     ///     fn meta(&self) -> Meta {
-    ///         Meta::new().summary("Create a user"))
+    ///         Meta::new()
+    ///             .summary("Create a user")
+    ///             .tag("users")
     ///     }
     /// }
     ///
-    /// // Also implement API trait...
+    /// #[async_trait]
+    /// impl Handler for CreateUser {
+    ///     type Request = CreateUserRequest;
+    ///     type Response = Json<User>;
+    ///
+    ///     async fn handle(&self, ctx: Context<Self::Request>) -> Self::Response {
+    ///         // Implementation
+    ///         # Json(User { id: 1, name: "test".into() })
+    ///     }
+    /// }
+    /// # #[derive(serde::Deserialize, schemars::JsonSchema, Default)]
+    /// # struct CreateUserRequest { name: String }
+    /// # #[derive(serde::Serialize, schemars::JsonSchema)]
+    /// # struct User { id: i64, name: String }
+    ///
+    /// Server::new()
+    ///     .register(CreateUser)
+    ///     .serve()
+    ///     .await
+    ///     .unwrap();
     /// ```
     pub fn register<E>(mut self, endpoint: E) -> Self
     where

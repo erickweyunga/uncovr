@@ -1,36 +1,23 @@
-//! Type-safe HTTP response handling with automatic OpenAPI documentation.
-//!
-//! The `Response` enum provides a standardized way to return different HTTP responses
-//! from your handlers. The `Error` type provides structured error responses with
-//! automatic status code mapping.
+//! Type-safe HTTP response types for uncovr handlers with automatic OpenAPI schema generation.
 
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response as AxumResponse};
 use serde::Serialize;
 use std::fmt;
 
-/// Standard response enum for success cases with automatic status code mapping.
+/// Success response type with semantic HTTP status codes.
 ///
-/// This type handles HTTP status codes, JSON serialization, and OpenAPI documentation
-/// automatically.
-///
-/// # Type Parameters
-///
-/// * `T` - The success response type (must implement `Serialize`)
+/// Provides type-safe response variants for common success scenarios with automatic
+/// JSON serialization and OpenAPI schema generation.
 ///
 /// # Examples
 ///
 /// ```rust,ignore
 /// use uncovr::prelude::*;
 ///
-/// // Return 200 OK
-/// Ok(Response::ok(user))
-///
-/// // Return 201 Created
-/// Ok(Response::created(user))
-///
-/// // Return 204 No Content
-/// Ok(Response::no_content())
+/// Response::ok(user)         // 200 OK
+/// Response::created(user)    // 201 Created
+/// Response::no_content()     // 204 No Content
 /// ```
 #[derive(Debug, Clone)]
 pub enum Response<T> {
@@ -43,17 +30,17 @@ pub enum Response<T> {
 }
 
 impl<T> Response<T> {
-    /// Create a 200 OK response
+    /// Creates a 200 OK response with the provided data.
     pub fn ok(data: T) -> Self {
         Self::Ok(data)
     }
 
-    /// Create a 201 Created response
+    /// Creates a 201 Created response with the provided data.
     pub fn created(data: T) -> Self {
         Self::Created(data)
     }
 
-    /// Create a 204 No Content response
+    /// Creates a 204 No Content response.
     pub fn no_content() -> Self {
         Self::NoContent
     }
@@ -90,10 +77,20 @@ where
     }
 }
 
-/// Structured error response with automatic HTTP status code mapping.
+/// Structured error response type with semantic HTTP status codes.
 ///
-/// This type provides semantic error responses for common HTTP error scenarios.
-/// It implements `std::error::Error` and can be used with the `?` operator.
+/// Provides standardized error responses for uncovr handlers with automatic status code
+/// mapping and JSON serialization. Implements `std::error::Error` for compatibility with
+/// the `?` operator and error conversion traits.
+///
+/// # Error Conversion Strategy
+///
+/// uncovr automatically converts common error types to appropriate HTTP responses:
+/// - **`ParamError`** → 400 Bad Request
+/// - **`serde_json::Error`** → 400 Bad Request
+/// - **`ParseIntError`**, **`ParseFloatError`**, **`ParseBoolError`** → 400 Bad Request
+/// - **`std::io::Error`** → 500 Internal Server Error (with error logging)
+/// - **`validator::ValidationErrors`** → 422 Unprocessable Entity (with field details)
 ///
 /// # Examples
 ///
@@ -106,7 +103,7 @@ where
 ///     type Response = Result<Json<User>, Error>;
 ///
 ///     async fn handle(&self, ctx: Context<Self::Request>) -> Self::Response {
-///         let id = ctx.path.parse::<i64>("id")?;
+///         let id = ctx.path.parse::<i64>("id")?;  // ParamError auto-converts to 400
 ///         let user = fetch_user(id).await
 ///             .map_err(|_| Error::not_found("user_not_found", "User not found"))?;
 ///         Ok(Json(user))
@@ -175,7 +172,7 @@ pub enum Error {
 }
 
 impl Error {
-    /// Create a 400 Bad Request error
+    /// Creates a 400 Bad Request error.
     pub fn bad_request(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self::BadRequest {
             code: code.into(),
@@ -184,7 +181,7 @@ impl Error {
         }
     }
 
-    /// Create a 400 Bad Request error with details
+    /// Creates a 400 Bad Request error with additional details.
     pub fn bad_request_with_details<D: Serialize>(
         code: impl Into<String>,
         message: impl Into<String>,
@@ -197,7 +194,7 @@ impl Error {
         }
     }
 
-    /// Create a 401 Unauthorized error
+    /// Creates a 401 Unauthorized error.
     pub fn unauthorized(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self::Unauthorized {
             code: code.into(),
@@ -206,7 +203,7 @@ impl Error {
         }
     }
 
-    /// Create a 403 Forbidden error
+    /// Creates a 403 Forbidden error.
     pub fn forbidden(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self::Forbidden {
             code: code.into(),
@@ -215,7 +212,7 @@ impl Error {
         }
     }
 
-    /// Create a 404 Not Found error
+    /// Creates a 404 Not Found error.
     pub fn not_found(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self::NotFound {
             code: code.into(),
@@ -224,7 +221,7 @@ impl Error {
         }
     }
 
-    /// Create a 409 Conflict error
+    /// Creates a 409 Conflict error.
     pub fn conflict(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self::Conflict {
             code: code.into(),
@@ -233,7 +230,7 @@ impl Error {
         }
     }
 
-    /// Create a 422 Unprocessable Entity error
+    /// Creates a 422 Unprocessable Entity error.
     pub fn unprocessable(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self::UnprocessableEntity {
             code: code.into(),
@@ -242,7 +239,7 @@ impl Error {
         }
     }
 
-    /// Create a 422 Unprocessable Entity error with details
+    /// Creates a 422 Unprocessable Entity error with validation details.
     pub fn unprocessable_with_details<D: Serialize>(
         code: impl Into<String>,
         message: impl Into<String>,
@@ -255,7 +252,7 @@ impl Error {
         }
     }
 
-    /// Create a 500 Internal Server Error
+    /// Creates a 500 Internal Server Error.
     pub fn internal(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self::InternalError {
             code: code.into(),
@@ -264,7 +261,7 @@ impl Error {
         }
     }
 
-    /// Create a 503 Service Unavailable error
+    /// Creates a 503 Service Unavailable error.
     pub fn service_unavailable(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self::ServiceUnavailable {
             code: code.into(),
@@ -273,7 +270,7 @@ impl Error {
         }
     }
 
-    /// Get the HTTP status code for this error
+    /// Returns the HTTP status code for this error.
     pub fn status_code(&self) -> StatusCode {
         match self {
             Error::BadRequest { .. } => StatusCode::BAD_REQUEST,
@@ -346,23 +343,20 @@ impl aide::OperationOutput for Error {
     }
 }
 
-// Automatic conversions from common error types
+// Automatic error conversions for uncovr handlers
 
-/// Convert ParamError to Error (400 Bad Request)
 impl From<crate::server::params::ParamError> for Error {
     fn from(err: crate::server::params::ParamError) -> Self {
         Error::bad_request("invalid_parameter", err.to_string())
     }
 }
 
-/// Convert serde_json::Error to Error (400 Bad Request for parsing errors)
 impl From<serde_json::Error> for Error {
     fn from(err: serde_json::Error) -> Self {
         Error::bad_request("json_parse_error", format!("Failed to parse JSON: {}", err))
     }
 }
 
-/// Convert std::io::Error to Error (500 Internal Server Error)
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
         tracing::error!("I/O error: {}", err);
@@ -370,21 +364,18 @@ impl From<std::io::Error> for Error {
     }
 }
 
-/// Convert std::num::ParseIntError to Error (400 Bad Request)
 impl From<std::num::ParseIntError> for Error {
     fn from(err: std::num::ParseIntError) -> Self {
         Error::bad_request("parse_error", format!("Failed to parse number: {}", err))
     }
 }
 
-/// Convert std::num::ParseFloatError to Error (400 Bad Request)
 impl From<std::num::ParseFloatError> for Error {
     fn from(err: std::num::ParseFloatError) -> Self {
         Error::bad_request("parse_error", format!("Failed to parse number: {}", err))
     }
 }
 
-/// Convert std::str::ParseBoolError to Error (400 Bad Request)
 impl From<std::str::ParseBoolError> for Error {
     fn from(err: std::str::ParseBoolError) -> Self {
         Error::bad_request("parse_error", format!("Failed to parse boolean: {}", err))
@@ -392,7 +383,6 @@ impl From<std::str::ParseBoolError> for Error {
 }
 
 #[cfg(feature = "validation")]
-/// Convert validator::ValidationErrors to Error (422 Unprocessable Entity)
 impl From<validator::ValidationErrors> for Error {
     fn from(errors: validator::ValidationErrors) -> Self {
         use std::collections::HashMap;

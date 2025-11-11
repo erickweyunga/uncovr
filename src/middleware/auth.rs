@@ -7,9 +7,17 @@ use axum::{
 use std::future::Future;
 use tower::{Layer, Service};
 
-/// Bearer token authentication middleware
+/// Bearer token authentication middleware for uncovr endpoints.
 ///
-/// Validates Bearer tokens from the Authorization header using a custom validation function.
+/// Validates Bearer tokens from the `Authorization` header using an async validation function.
+/// Returns HTTP 401 for missing, malformed, or invalid tokens.
+///
+/// # Implementation
+///
+/// - Extracts tokens from `Authorization: Bearer <token>` headers
+/// - Invokes the provided validator with the extracted token
+/// - Allows requests through on successful validation
+/// - Returns 401 with the validator's error message on failure
 ///
 /// # Example
 ///
@@ -40,28 +48,7 @@ where
     F: Fn(String) -> Fut + Clone + Send + Sync + 'static,
     Fut: Future<Output = Result<(), String>> + Send + 'static,
 {
-    /// Create a new Bearer authentication middleware
-    ///
-    /// # Arguments
-    ///
-    /// * `validator` - Async function that validates the token and returns `Ok(())` if valid
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use uncovr::middleware::BearerAuth;
-    ///
-    /// async fn my_validator(token: String) -> Result<(), String> {
-    ///     // Validate JWT, check database, etc.
-    ///     if token.starts_with("valid_") {
-    ///         Ok(())
-    ///     } else {
-    ///         Err("Token validation failed".to_string())
-    ///     }
-    /// }
-    ///
-    /// let auth = BearerAuth::new(my_validator);
-    /// ```
+    /// Creates a Bearer authentication middleware with the specified validator function.
     pub fn new(validator: F) -> Self {
         Self { validator }
     }

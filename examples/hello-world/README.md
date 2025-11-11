@@ -1,4 +1,4 @@
-# Simple Uncovr Example
+# Web Service Uncovr Example
 
 The most basic Uncovr API - one endpoint, no complexity.
 

@@ -1,34 +1,14 @@
 use axum::Router;
 
-/// Extension trait for Router to add Uncovr-specific functionality.
+/// Extension trait for a web application router to add Uncovr-specific functionality.
 ///
-/// This trait is automatically implemented for all Axum Routers.
+/// This trait is automatically implemented for the router type.
 pub trait RouterExt {
-    /// Adds CORS support with permissive defaults.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use axum::Router;
-    /// use uncovr::server::RouterExt;
-    ///
-    /// let router = Router::new()
-    ///     .with_cors();
-    /// ```
+    /// Adds Cross-Origin Resource Sharing (CORS) support with permissive defaults.
     #[cfg(feature = "cors")]
     fn with_cors(self) -> Self;
 
     /// Adds request logging middleware.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use axum::Router;
-    /// use uncovr::server::RouterExt;
-    ///
-    /// let router = Router::new()
-    ///     .with_logging();
-    /// ```
     #[cfg(feature = "logging")]
     fn with_logging(self) -> Self;
 }

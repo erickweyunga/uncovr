@@ -1,12 +1,10 @@
 //! # Uncovr
 //!
-//! A modular microbackend framework for building type-safe, production-ready REST APIs
-//! with minimal boilerplate and automatic documentation.
+//! **Uncovr: Modular, type-safe, developer-friendly backend framework for Rust**
 //!
-//! Uncovr enables you to build composable, self-contained API modules (microbackends)
-//! with automatic OpenAPI documentation, built-in logging, CORS support, and a clean
-//! configuration system. Each endpoint is a standalone module that can be developed,
-//! tested, and deployed independently.
+//! Uncovr is a comprehensive backend framework that enables you to build production-ready
+//! applications with automatic OpenAPI documentation, built-in middleware, and a clean
+//! modular architecture. Focus on your business logic while Uncovr handles the infrastructure.
 //!
 //! ## Quick Start
 //!
@@ -74,15 +72,13 @@
 //!
 //! ## Features
 //!
-//! - **Microbackend Architecture** - Build composable, self-contained API modules
-//! - **Auto-generated OpenAPI Documentation** - Interactive API docs with Scalar UI
-//! - **Type-Safe Endpoints** - Full compile-time type checking for requests and responses
-//! - **Modular Design** - Each endpoint is an independent, testable module
-//! - **Built-in Logging** - Structured logging with development and production modes
-//! - **CORS Support** - Environment-based CORS configuration out of the box
-//! - **Configuration Management** - Centralized, type-safe configuration
-//! - **Minimal Boilerplate** - Focus on business logic, not framework code
-//! - **Production-Ready** - Built-in middleware, error handling, and best practices
+//! - **Type-Safe** - Full compile-time type checking for requests, responses, and parameters
+//! - **Automatic Documentation** - OpenAPI 3.0 specification with interactive Scalar UI
+//! - **Modular Architecture** - Composable endpoints and middleware for clean separation of concerns
+//! - **Developer-Friendly** - Intuitive APIs with excellent error messages and examples
+//! - **Structured Logging** - Development and production logging modes with tracing support
+//! - **Production-Ready** - Error handling, validation, and best practices out of the box
+//! - **Extensible** - Easy integration with Axum ecosystem and Tower middleware
 //!
 //! ## Configuration
 //!

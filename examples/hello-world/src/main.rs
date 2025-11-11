@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use uncovr::prelude::*;
 
 // GET /hello endpoint
@@ -26,8 +27,9 @@ impl Handler for Hello {
 
 #[tokio::main]
 async fn main() {
-    let app =
-        App::new("Basic API", "1.0.0", "127.0.0.1:8000").description("A Simple Uncovr API example");
+    let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
+    let app = App::new("Basic API", "1.0.0", addr.to_string())
+        .description("A Web Service Uncovr API example");
 
     uncovr::server::Server::new()
         .with_config(app)

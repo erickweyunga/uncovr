@@ -1,6 +1,9 @@
 use aide::openapi::{Info, OpenApi, Server as OpenApiServer};
 
-/// Configuration for OpenAPI documentation generation.
+/// OpenAPI 3.0 specification configuration for automatic documentation generation.
+///
+/// Configures metadata and server information for the generated OpenAPI specification.
+/// Used with [`ServerBuilder::with_openapi`] to enable interactive API documentation.
 ///
 /// # Example
 ///
@@ -8,7 +11,7 @@ use aide::openapi::{Info, OpenApi, Server as OpenApiServer};
 /// use uncovr::openapi::OpenApiConfig;
 ///
 /// let config = OpenApiConfig::new("My API", "1.0.0")
-///     .description("A comprehensive API")
+///     .description("REST API for managing resources")
 ///     .server("https://api.example.com", "Production")
 ///     .server("http://localhost:3000", "Development");
 /// ```
@@ -27,20 +30,7 @@ pub struct OpenApiConfig {
 }
 
 impl OpenApiConfig {
-    /// Creates a new OpenAPI configuration.
-    ///
-    /// # Arguments
-    ///
-    /// * `title` - The title of your API
-    /// * `version` - The version of your API
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use uncovr::openapi::OpenApiConfig;
-    ///
-    /// let config = OpenApiConfig::new("My API", "1.0.0");
-    /// ```
+    /// Creates an OpenAPI configuration with the specified title and version.
     pub fn new(title: impl Into<String>, version: impl Into<String>) -> Self {
         Self {
             title: title.into(),
@@ -88,12 +78,7 @@ impl OpenApiConfig {
         self
     }
 
-    /// Adds a server to the OpenAPI specification.
-    ///
-    /// # Arguments
-    ///
-    /// * `url` - The server URL
-    /// * `description` - A description of the server
+    /// Adds a server URL to the OpenAPI specification.
     pub fn server(mut self, url: impl Into<String>, description: impl Into<String>) -> Self {
         self.servers.push((url.into(), description.into()));
         self

@@ -1,8 +1,3 @@
-//! Request parameter types for path and query parameters.
-//!
-//! This module provides types for working with URL path parameters and query strings
-//! in a type-safe manner.
-
 use std::collections::HashMap;
 use std::str::FromStr;
 

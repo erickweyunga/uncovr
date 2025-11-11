@@ -11,14 +11,22 @@ use std::{
 };
 use tower::{Layer, Service};
 
-/// Simple in-memory rate limiter middleware
+/// In-memory rate limiter middleware for protecting uncovr endpoints.
 ///
-/// Limits the number of requests from a single IP address within a time window.
-/// Returns 429 (Too Many Requests) when the limit is exceeded.
+/// Enforces request rate limits per IP address using a sliding window algorithm.
+/// Returns HTTP 429 when the configured threshold is exceeded.
 ///
-/// **Note:** This is an in-memory rate limiter suitable for single-instance deployments.
-/// For production multi-instance deployments, consider using a distributed rate limiter
-/// with Redis or similar.
+/// # Implementation
+///
+/// - Tracks request timestamps per IP address
+/// - Sliding window: automatically expires old requests outside the time window
+/// - IP extraction: uses `X-Forwarded-For` header when available, falls back to connection IP
+/// - Thread-safe: internal mutex ensures safe concurrent access
+///
+/// # Production Considerations
+///
+/// This middleware stores state in memory and is designed for single-instance deployments.
+/// For distributed systems, integrate a Redis-backed rate limiter or similar distributed solution.
 ///
 /// # Example
 ///
@@ -27,7 +35,6 @@ use tower::{Layer, Service};
 /// use uncovr::middleware::RateLimit;
 /// use std::time::Duration;
 ///
-/// // Allow 100 requests per minute per IP
 /// let server = Server::new()
 ///     .layer(RateLimit::new(100, Duration::from_secs(60)))
 ///     .register(MyEndpoint)
@@ -45,25 +52,7 @@ struct RateLimitStore {
 }
 
 impl RateLimit {
-    /// Create a new rate limiter
-    ///
-    /// # Arguments
-    ///
-    /// * `max_requests` - Maximum number of requests allowed per window
-    /// * `window` - Time window for rate limiting
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use uncovr::middleware::RateLimit;
-    /// use std::time::Duration;
-    ///
-    /// // 60 requests per minute
-    /// let limiter = RateLimit::new(60, Duration::from_secs(60));
-    ///
-    /// // 1000 requests per hour
-    /// let limiter = RateLimit::new(1000, Duration::from_secs(3600));
-    /// ```
+    /// Creates a rate limiter with the specified threshold and time window.
     pub fn new(max_requests: usize, window: Duration) -> Self {
         Self {
             max_requests,

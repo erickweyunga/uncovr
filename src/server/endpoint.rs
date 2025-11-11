@@ -1,31 +1,9 @@
-//! Endpoint definition module for Uncovr.
+//! Endpoint routing and metadata definitions for uncovr applications.
 //!
-//! This module provides a clean separation between route definition and metadata (documentation).
-//!
-//! # Example
-//!
-//! ```no_run
-//! use uncovr::server::endpoint::{Endpoint, Route, Meta};
-//!
-//! struct CreateUser;
-//!
-//! impl Endpoint for CreateUser {
-//!     fn route(&self) -> Route {
-//!         Route::post("/users")
-//!     }
-//!
-//!     fn meta(&self) -> Meta {
-//!         Meta::new()
-//!             .summary("Create a new user")
-//!             .describe("Creates a user with the provided information")
-//!             .tag("users")
-//!     }
-//! }
-//! ```
+//! This module provides the [`Endpoint`] trait and supporting types for defining
+//! API routes with automatic OpenAPI documentation generation.
 
-/// HTTP method enumeration.
-///
-/// Represents the standard HTTP methods used in REST APIs.
+/// HTTP method types for REST API endpoints.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HttpMethod {
     GET,
@@ -38,7 +16,7 @@ pub enum HttpMethod {
 }
 
 impl HttpMethod {
-    /// Convert to lowercase string representation for routing
+    /// Returns the lowercase string representation for routing.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::GET => "get",
@@ -52,7 +30,7 @@ impl HttpMethod {
     }
 }
 
-/// Query parameter information.
+/// Query parameter metadata for OpenAPI documentation.
 #[derive(Debug, Clone)]
 pub struct QueryParam {
     pub name: &'static str,
@@ -60,7 +38,7 @@ pub struct QueryParam {
     pub required: bool,
 }
 
-/// Path parameter information.
+/// Path parameter metadata for OpenAPI documentation.
 #[derive(Debug, Clone)]
 pub struct PathParam {
     pub name: &'static str,
@@ -68,9 +46,10 @@ pub struct PathParam {
     pub required: bool,
 }
 
-/// Parameter builder for fluent API.
+/// Builder for configuring route parameters with a fluent API.
 ///
-/// This is used internally to build query and path parameters with a fluent interface.
+/// Created by [`Route::query()`] and [`Route::path_param()`] methods. Allows chaining
+/// `.required()` and `.desc()` calls to configure parameter metadata for OpenAPI documentation.
 #[derive(Debug)]
 pub struct ParamBuilder<'a> {
     route: &'a mut Route,
@@ -84,7 +63,7 @@ enum ParamType {
 }
 
 impl<'a> ParamBuilder<'a> {
-    /// Mark the parameter as required.
+    /// Marks the parameter as required in the OpenAPI specification.
     pub fn required(self) -> &'a mut Route {
         match self.param_type {
             ParamType::Query(idx) => {
@@ -101,7 +80,7 @@ impl<'a> ParamBuilder<'a> {
         self.route
     }
 
-    /// Add a description to the parameter.
+    /// Adds a description to the parameter for OpenAPI documentation.
     pub fn desc(self, description: &'static str) -> &'a mut Route {
         match self.param_type {
             ParamType::Query(idx) => {
@@ -121,18 +100,8 @@ impl<'a> ParamBuilder<'a> {
 
 /// Route definition for an API endpoint.
 ///
-/// Defines the technical aspects of a route including path, HTTP method,
-/// and parameters.
-///
-/// # Example
-///
-/// ```
-/// use uncovr::server::endpoint::Route;
-///
-/// let route = Route::post("/users/:id")
-///     .param("id", "User ID")
-///     .query("notify");
-/// ```
+/// Specifies the HTTP method, path, and parameter metadata for an endpoint.
+/// Used with [`Endpoint::route()`] to configure routing behavior.
 #[derive(Debug, Clone)]
 pub struct Route {
     pub path: &'static str,
@@ -142,7 +111,7 @@ pub struct Route {
 }
 
 impl Route {
-    /// Create a new route with the specified method and path.
+    /// Creates a route with the specified HTTP method and path.
     pub fn new(method: HttpMethod, path: &'static str) -> Self {
         Self {
             path,
@@ -152,95 +121,42 @@ impl Route {
         }
     }
 
-    /// Create a GET route (lowercase, following Rust conventions).
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use uncovr::server::endpoint::Route;
-    ///
-    /// let route = Route::get("/users");
-    /// ```
+    /// Creates a GET route.
     pub fn get(path: &'static str) -> Self {
         Self::new(HttpMethod::GET, path)
     }
 
-    /// Create a POST route (lowercase, following Rust conventions).
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use uncovr::server::endpoint::Route;
-    ///
-    /// let route = Route::post("/users");
-    /// ```
+    /// Creates a POST route.
     pub fn post(path: &'static str) -> Self {
         Self::new(HttpMethod::POST, path)
     }
 
-    /// Create a PUT route (lowercase, following Rust conventions).
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use uncovr::server::endpoint::Route;
-    ///
-    /// let route = Route::put("/users/:id");
-    /// ```
+    /// Creates a PUT route.
     pub fn put(path: &'static str) -> Self {
         Self::new(HttpMethod::PUT, path)
     }
 
-    /// Create a PATCH route (lowercase, following Rust conventions).
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use uncovr::server::endpoint::Route;
-    ///
-    /// let route = Route::patch("/users/:id");
-    /// ```
+    /// Creates a PATCH route.
     pub fn patch(path: &'static str) -> Self {
         Self::new(HttpMethod::PATCH, path)
     }
 
-    /// Create a DELETE route (lowercase, following Rust conventions).
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use uncovr::server::endpoint::Route;
-    ///
-    /// let route = Route::delete("/users/:id");
-    /// ```
+    /// Creates a DELETE route.
     pub fn delete(path: &'static str) -> Self {
         Self::new(HttpMethod::DELETE, path)
     }
 
-    /// Create an OPTIONS route (lowercase, following Rust conventions).
+    /// Creates an OPTIONS route.
     pub fn options(path: &'static str) -> Self {
         Self::new(HttpMethod::OPTIONS, path)
     }
 
-    /// Create a HEAD route (lowercase, following Rust conventions).
+    /// Creates a HEAD route.
     pub fn head(path: &'static str) -> Self {
         Self::new(HttpMethod::HEAD, path)
     }
 
-    /// Add a query parameter with optional description.
-    ///
-    /// Returns a mutable reference to self for further chaining,
-    /// or use `.required()` or `.desc()` to configure the parameter.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use uncovr::server::endpoint::Route;
-    ///
-    /// let route = Route::get("/users")
-    ///     .query("page")
-    ///     .query("limit").required();
-    /// ```
+    /// Adds a query parameter and returns a builder for configuration.
     pub fn query(&mut self, name: &'static str) -> ParamBuilder<'_> {
         self.query_params.push(QueryParam {
             name,
@@ -255,18 +171,7 @@ impl Route {
         }
     }
 
-    /// Add a path parameter with description (shorthand method).
-    ///
-    /// This is a convenience method that combines adding a parameter and description.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use uncovr::server::endpoint::Route;
-    ///
-    /// let route = Route::delete("/users/:id")
-    ///     .param("id", "User ID");
-    /// ```
+    /// Adds a path parameter with description.
     pub fn param(mut self, name: &'static str, description: &'static str) -> Self {
         self.path_params.push(PathParam {
             name,
@@ -276,18 +181,7 @@ impl Route {
         self
     }
 
-    /// Add a path parameter (legacy method for backward compatibility).
-    ///
-    /// Returns a builder for fluent configuration.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use uncovr::server::endpoint::Route;
-    ///
-    /// let route = Route::delete("/users/:id")
-    ///     .path_param("id").desc("User ID").required();
-    /// ```
+    /// Adds a path parameter and returns a builder for configuration.
     pub fn path_param(&mut self, name: &'static str) -> ParamBuilder<'_> {
         self.path_params.push(PathParam {
             name,
@@ -303,27 +197,15 @@ impl Route {
     }
 }
 
-/// Response callback type for configuring OpenAPI responses
+/// Callback type for configuring OpenAPI response schemas.
 pub type ResponseCallback = Box<
     dyn FnOnce(aide::transform::TransformOperation) -> aide::transform::TransformOperation + Send,
 >;
 
-/// Metadata for an API endpoint.
+/// Endpoint metadata for API documentation and OpenAPI specification generation.
 ///
-/// Provides human-readable information about the endpoint for API documentation
-/// and OpenAPI specification generation.
-///
-/// # Example
-///
-/// ```
-/// use uncovr::server::endpoint::Meta;
-///
-/// let meta = Meta::new()
-///     .summary("Create a new user")
-///     .describe("Creates a user with the provided information")
-///     .tag("users")
-///     .tag("authentication");
-/// ```
+/// Defines human-readable information about endpoints including summaries, descriptions,
+/// tags, and deprecation status.
 #[derive(Default)]
 pub struct Meta {
     pub summary: Option<&'static str>,
@@ -334,110 +216,41 @@ pub struct Meta {
 }
 
 impl Meta {
-    /// Create a new metadata builder.
+    /// Creates metadata builder with default values.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Set the summary (short description) for the endpoint.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use uncovr::server::endpoint::Meta;
-    ///
-    /// let meta = Meta::new().summary("Get all users");
-    /// ```
+    /// Sets the endpoint summary (brief description).
     pub fn summary(mut self, text: &'static str) -> Self {
         self.summary = Some(text);
         self
     }
 
-    /// Set the detailed description for the endpoint.
-    ///
-    /// Renamed from `description` to `describe` for verb consistency.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use uncovr::server::endpoint::Meta;
-    ///
-    /// let meta = Meta::new()
-    ///     .summary("Create user")
-    ///     .describe("Creates a new user account with the provided information. Requires admin privileges.");
-    /// ```
+    /// Sets the detailed description for the endpoint.
     pub fn describe(mut self, text: &'static str) -> Self {
         self.description = Some(text);
         self
     }
 
-    /// Set the detailed description for the endpoint (alias for backward compatibility).
-    ///
-    /// Use `describe()` for verb consistency in new code.
+    /// Sets the detailed description (alias for `describe`).
     pub fn description(self, text: &'static str) -> Self {
         self.describe(text)
     }
 
-    /// Add a tag to categorize the endpoint.
-    ///
-    /// Tags are used to group related endpoints in API documentation.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use uncovr::server::endpoint::Meta;
-    ///
-    /// let meta = Meta::new()
-    ///     .summary("Get user")
-    ///     .tag("users")
-    ///     .tag("public");
-    /// ```
+    /// Adds a tag for categorizing the endpoint in documentation.
     pub fn tag(mut self, tag: &'static str) -> Self {
         self.tags.push(tag);
         self
     }
 
-    /// Mark the endpoint as deprecated.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use uncovr::server::endpoint::Meta;
-    ///
-    /// let meta = Meta::new()
-    ///     .summary("Old API endpoint")
-    ///     .deprecated();
-    /// ```
+    /// Marks the endpoint as deprecated in the OpenAPI specification.
     pub fn deprecated(mut self) -> Self {
         self.deprecated = true;
         self
     }
 
-    /// Configure OpenAPI responses for this endpoint.
-    ///
-    /// This allows you to document different response status codes and their types.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use uncovr::server::endpoint::Meta;
-    /// use uncovr::prelude::*;
-    /// # struct UserResponse;
-    /// # impl schemars::JsonSchema for UserResponse {
-    /// #     fn schema_name() -> String { "UserResponse".to_string() }
-    /// #     fn json_schema(_: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
-    /// #         schemars::schema::Schema::Bool(true)
-    /// #     }
-    /// # }
-    ///
-    /// let meta = Meta::new()
-    ///     .summary("Get user")
-    ///     .responses(|op| {
-    ///         op.response::<200, Json<UserResponse>>()
-    ///           .response::<404, Json<Error>>()
-    ///           .response::<500, Json<Error>>()
-    ///     });
-    /// ```
+    /// Configures OpenAPI response schemas for this endpoint.
     pub fn responses<F>(mut self, callback: F) -> Self
     where
         F: FnOnce(aide::transform::TransformOperation) -> aide::transform::TransformOperation
@@ -449,10 +262,10 @@ impl Meta {
     }
 }
 
-/// Trait for defining API endpoints.
+/// Trait for defining API endpoint routing and documentation.
 ///
-/// Separates route definition from metadata (documentation), providing clear
-/// separation of concerns.
+/// Separates technical route configuration from human-readable metadata,
+/// enabling clean endpoint definitions with automatic OpenAPI generation.
 ///
 /// # Example
 ///
@@ -464,35 +277,24 @@ impl Meta {
 /// impl Endpoint for GetUsers {
 ///     fn route(&self) -> Route {
 ///         Route::get("/users")
-///             .query("page")
-///             .query("limit").required()
 ///     }
 ///
 ///     fn meta(&self) -> Meta {
 ///         Meta::new()
 ///             .summary("List all users")
-///             .describe("Returns a paginated list of users")
 ///             .tag("users")
 ///     }
 /// }
 /// ```
 pub trait Endpoint {
-    /// Define the route (path, method, parameters).
-    ///
-    /// This is the core routing definition for the endpoint.
+    /// Returns the route configuration for this endpoint.
     fn route(&self) -> Route;
 
-    /// Define metadata (documentation) for the endpoint.
-    ///
-    /// Always return metadata for proper API documentation.
+    /// Returns the metadata for OpenAPI documentation.
     fn meta(&self) -> Meta {
         Meta::new()
     }
 }
-
-/// Legacy type alias for backward compatibility during migration
-#[deprecated(since = "0.3.0", note = "Use `Meta` instead")]
-pub type Docs = Meta;
 
 #[cfg(test)]
 mod tests {

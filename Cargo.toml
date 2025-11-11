@@ -1,16 +1,16 @@
 [package]
 name = "uncovr"
-version = "0.2.6"
+version = "0.2.7"
 edition = "2024"
 authors = ["Eric Kweyunga <maverickweyunga@gmail.com>"]
-description = "A modular microbackend framework for building type-safe REST APIs with automatic OpenAPI documentation and minimal boilerplate"
+description = "Modular, type-safe, developer-friendly backend framework for Rust with automatic OpenAPI documentation"
 license = "MIT"
 repository = "https://github.com/erickweyunga/uncovr"
 homepage = "https://github.com/erickweyunga/uncovr"
 documentation = "https://docs.rs/uncovr"
 readme = "README.md"
-keywords = ["microbackend", "api", "modular", "openapi", "rest"]
-categories = ["web-programming::http-server", "web-programming", "api-bindings"]
+keywords = ["backend", "api", "framework", "openapi", "type-safe"]
+categories = ["web-programming::http-server", "web-programming", "asynchronous"]
 rust-version = "1.85.0"
 exclude = [
     "examples/",
@@ -21,7 +21,7 @@ exclude = [
 ]
 
 [workspace]
-members = [".", "examples/simple"]
+members = [".", "examples/hello-world"]
 resolver = "2"
 
 [features]

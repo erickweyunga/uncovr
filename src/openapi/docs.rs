@@ -9,7 +9,6 @@ use axum::extract::Extension;
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 
-// Include the static HTML file at compile time
 const DOCS_HTML: &str = include_str!("../static/docs.html");
 
 /// Serves the OpenAPI documentation as JSON
@@ -30,7 +29,6 @@ pub async fn serve_docs(Extension(api): Extension<OpenApi>) -> Response {
 /// This handler is typically mounted at `/docs` and provides an interactive API documentation UI.
 /// The `openapi_json_path` parameter specifies the path to fetch the OpenAPI JSON spec.
 pub async fn serve_scalar_ui(openapi_json_path: String) -> Response {
-    // Replace the placeholder with the actual OpenAPI JSON path
     let html = DOCS_HTML.replace("{{OPENAPI_JSON_PATH}}", &openapi_json_path);
 
     (StatusCode::OK, [(header::CONTENT_TYPE, "text/html")], html).into_response()

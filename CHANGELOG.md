@@ -5,7 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.7]
+
+### Changed
+- **BREAKING**: Updated brand positioning and tagline
+  - New tagline: "Modular, type-safe, developer-friendly backend framework for Rust"
+  - Repositioned from "microbackend" framework to comprehensive backend framework
+  - Updated all documentation to reflect broader vision (templates, gRPC, WebSockets support coming)
+  - Changed Cargo.toml keywords: `microbackend` → `backend`, `rest` → `type-safe`
+  - Updated categories: `api-bindings` → `asynchronous`
+
+### Documentation
+- **Complete documentation overhaul**: Rewrote all inline documentation for professional consistency
+  - Removed discouraged terms ("simple", "custom", "basic") across all 29 source files
+  - Standardized method documentation verbs ("Creates", "Returns", "Asserts")
+  - Enhanced error conversion documentation in `api/response.rs`
+  - Added Context interaction details in `api/api.rs`
+  - Improved parameter builder documentation in `server/endpoint.rs`
+  - Added comprehensive module-level documentation to `testing/response.rs`
+- **README transformation**: Simplified README from ~400 to ~100 lines (inspired by Actix Web)
+  - Clean one-line tagline with badges
+  - Scannable bullet-point features
+  - Minimal "Hello World" example
+  - Removed verbose sections (moved to docs)
+- **Library documentation**: Updated `src/lib.rs` with new positioning
+  - Emphasizes modular architecture and extensibility
+  - Updated feature list to align with comprehensive backend framework vision
+  - Professional, concise examples
 
 ## [0.2.4] - 2025-11-08
 
