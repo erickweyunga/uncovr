@@ -7,10 +7,10 @@
 //!
 //! ```rust
 //! use uncovr::logging;
-//! use uncovr::config::LoggingConfig;
+//! use uncovr::config::Logging;
 //!
 //! // Initialize logging (usually done automatically by the server)
-//! let config = LoggingConfig::development();
+//! let config = Logging::development();
 //! logging::init(&config);
 //!
 //! // Now you can use tracing macros
@@ -18,7 +18,7 @@
 //! tracing::debug!(user_id = 42, "Processing request");
 //! ```
 
-use crate::config::{LogFormat, LoggingConfig};
+use crate::config::{LogFormat, Logging};
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Initialize the logging system based on configuration.
@@ -41,23 +41,23 @@ use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberI
 /// # Examples
 ///
 /// ```rust
-/// use uncovr::{logging, config::{LoggingConfig, LogLevel, LogFormat}};
+/// use uncovr::{logging, config::{Logging, LogLevel, LogFormat}};
 ///
 /// // Development logging
-/// let dev_config = LoggingConfig::development();
+/// let dev_config = Logging::development();
 /// logging::init(&dev_config);
 ///
 /// // Production logging
-/// let prod_config = LoggingConfig::production();
+/// let prod_config = Logging::production();
 /// logging::init(&prod_config);
 ///
 /// // Custom configuration
-/// let custom = LoggingConfig::default()
+/// let custom = Logging::default()
 ///     .level(LogLevel::Info)
 ///     .format(LogFormat::Json);
 /// logging::init(&custom);
 /// ```
-pub fn init(config: &LoggingConfig) {
+pub fn init(config: &Logging) {
     let filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new(config.level.as_filter()));
 

@@ -46,19 +46,19 @@ pub enum LogFormat {
 /// # Example
 ///
 /// ```rust
-/// use uncovr::config::{LoggingConfig, LogLevel, LogFormat};
+/// use uncovr::config::{Logging, LogLevel, LogFormat};
 ///
 /// // Development
-/// let config = LoggingConfig::development();
+/// let config = Logging::development();
 ///
 /// // Production
-/// let config = LoggingConfig::production();
+/// let config = Logging::production();
 ///
 /// // Custom
-/// let config = LoggingConfig::new(LogLevel::Info, LogFormat::Json);
+/// let config = Logging::new(LogLevel::Info, LogFormat::Json);
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoggingConfig {
+pub struct Logging {
     /// Minimum log level to display
     pub level: LogLevel,
 
@@ -69,7 +69,7 @@ pub struct LoggingConfig {
     pub log_requests: bool,
 }
 
-impl Default for LoggingConfig {
+impl Default for Logging {
     fn default() -> Self {
         Self {
             level: LogLevel::Info,
@@ -79,15 +79,15 @@ impl Default for LoggingConfig {
     }
 }
 
-impl LoggingConfig {
+impl Logging {
     /// Create a new logging configuration
     ///
     /// # Example
     ///
     /// ```rust
-    /// use uncovr::config::{LoggingConfig, LogLevel, LogFormat};
+    /// use uncovr::config::{Logging, LogLevel, LogFormat};
     ///
-    /// let config = LoggingConfig::new(LogLevel::Debug, LogFormat::Pretty);
+    /// let config = Logging::new(LogLevel::Debug, LogFormat::Pretty);
     /// ```
     pub fn new(level: LogLevel, format: LogFormat) -> Self {
         Self {
@@ -106,9 +106,9 @@ impl LoggingConfig {
     /// # Example
     ///
     /// ```rust
-    /// use uncovr::config::LoggingConfig;
+    /// use uncovr::config::Logging;
     ///
-    /// let config = LoggingConfig::development();
+    /// let config = Logging::development();
     /// ```
     pub fn development() -> Self {
         Self {
@@ -127,9 +127,9 @@ impl LoggingConfig {
     /// # Example
     ///
     /// ```rust
-    /// use uncovr::config::LoggingConfig;
+    /// use uncovr::config::Logging;
     ///
-    /// let config = LoggingConfig::production();
+    /// let config = Logging::production();
     /// ```
     pub fn production() -> Self {
         Self {

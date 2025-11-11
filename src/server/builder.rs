@@ -21,7 +21,7 @@ use tower::Service;
 use tower_http::trace::{MakeSpan, OnResponse, TraceLayer};
 
 use crate::api::api::Handler;
-use crate::config::AppConfig;
+use crate::config::App;
 use crate::context::Context;
 use crate::openapi::{OpenApiConfig, serve_docs, serve_scalar_ui};
 use crate::server::endpoint::Endpoint as EndpointTrait;
@@ -130,11 +130,11 @@ impl<B> OnResponse<B> for RequestLogger {
 ///
 /// ```rust,no_run
 /// use uncovr::server::Server;
-/// use uncovr::config::AppConfig;
+/// use uncovr::config::App;
 ///
 /// #[tokio::main]
 /// async fn main() {
-///     let config = AppConfig::new("My API", "1.0.0");
+///     let config = App::new("My API", "1.0.0");
 ///
 ///     Server::new()
 ///         .with_config(config)
@@ -205,8 +205,8 @@ impl Server {
 ///
 /// #[tokio::main]
 /// async fn main() {
-///     let config = AppConfig::new("Hello API", "1.0.0")
-///         .logging(LoggingConfig::development());
+///     let config = App::new("Hello API", "1.0.0")
+///         .logging(Logging::development());
 ///
 ///     Server::new()
 ///         .with_config(config)
@@ -220,8 +220,8 @@ pub struct ServerBuilder {
     router: ApiRouter,
     address: String,
     openapi: Option<aide::openapi::OpenApi>,
-    config: Option<AppConfig>,
-    logging: Option<crate::config::LoggingConfig>,
+    config: Option<App>,
+    logging: Option<crate::config::Logging>,
 }
 
 impl Default for ServerBuilder {
@@ -275,37 +275,37 @@ fn param_info_to_query_param(param: &ParamInfo) -> ReferenceOr<Parameter> {
 }
 
 impl ServerBuilder {
-    /// Configure the server with an AppConfig
-    pub fn with_config(mut self, config: AppConfig) -> Self {
+    /// Configure the server with an App
+    pub fn with_config(mut self, config: App) -> Self {
         // Set address from config
-        self.address = config.bind_address.clone();
+        self.address = config.bind.clone();
 
         // Configure OpenAPI if enabled
-        if config.enable_docs {
+        if config.docs {
             let mut openapi_config =
                 OpenApiConfig::new(&config.name, &config.version).description(&config.description);
 
             // Add servers from config, or use bind address if no servers configured
-            if config.api_servers.is_empty() {
+            if config.servers.is_empty() {
                 // Automatically derive server URL from bind address
-                let server_url = if config.bind_address.starts_with("0.0.0.0:") {
+                let server_url = if config.bind.starts_with("0.0.0.0:") {
                     format!(
                         "http://localhost:{}",
-                        config.bind_address.strip_prefix("0.0.0.0:").unwrap()
+                        config.bind.strip_prefix("0.0.0.0:").unwrap()
                     )
-                } else if config.bind_address.starts_with("127.0.0.1:")
-                    || config.bind_address.starts_with("localhost:")
+                } else if config.bind.starts_with("127.0.0.1:")
+                    || config.bind.starts_with("localhost:")
                 {
-                    format!("http://{}", config.bind_address)
+                    format!("http://{}", config.bind)
                 } else {
                     // For any other address (including domain names), use http://
-                    format!("http://{}", config.bind_address)
+                    format!("http://{}", config.bind)
                 };
 
                 openapi_config = openapi_config.server(server_url, "API Server");
             } else {
                 // Use explicitly configured servers
-                for server in &config.api_servers {
+                for server in &config.servers {
                     openapi_config = openapi_config.server(&server.url, &server.description);
                 }
             }
@@ -326,24 +326,24 @@ impl ServerBuilder {
 
     /// Configure logging for the server
     ///
-    /// This is now separate from AppConfig for better modularity.
+    /// This is now separate from App for better modularity.
     ///
     /// # Example
     ///
     /// ```rust,no_run
     /// use uncovr::server::Server;
-    /// use uncovr::config::{AppConfig, LoggingConfig};
+    /// use uncovr::config::{App, Logging};
     ///
-    /// let config = AppConfig::new("My API", "1.0.0");
+    /// let config = App::new("My API", "1.0.0");
     ///
     /// Server::new()
     ///     .with_config(config)
-    ///     .with_logging(LoggingConfig::development())
+    ///     .with_logging(Logging::development())
     ///     .serve()
     ///     .await
     ///     .unwrap();
     /// ```
-    pub fn with_logging(mut self, logging: crate::config::LoggingConfig) -> Self {
+    pub fn with_logging(mut self, logging: crate::config::Logging) -> Self {
         self.logging = Some(logging);
         self
     }
@@ -829,7 +829,7 @@ impl ServerBuilder {
             let openapi_json_path = self
                 .config
                 .as_ref()
-                .map(|c| c.openapi_json_path.as_str())
+                .map(|c| c.spec_path.as_str())
                 .unwrap_or("/openapi.json");
 
             let openapi_path_for_ui = if let Some(stripped) = openapi_json_path.strip_prefix('/') {
@@ -891,7 +891,7 @@ impl ServerBuilder {
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// let config = AppConfig::new("My API", "1.0.0");
+    /// let config = App::new("My API", "1.0.0");
     ///
     /// Server::new()
     ///     .with_config(config)
@@ -915,7 +915,7 @@ impl ServerBuilder {
     /// use uncovr::server::Server;
     ///
     /// let server = Server::new()
-    ///     .with_config(AppConfig::new("My API", "1.0.0"))
+    ///     .with_config(App::new("My API", "1.0.0"))
     ///     .layer(CompressionLayer::new())
     ///     .build();
     /// ```
@@ -947,7 +947,7 @@ impl ServerBuilder {
     /// }
     ///
     /// let server = Server::new()
-    ///     .with_config(AppConfig::new("My API", "1.0.0"))
+    ///     .with_config(App::new("My API", "1.0.0"))
     ///     .fallback(handle_404)
     ///     .build();
     /// ```
@@ -982,7 +982,7 @@ impl ServerBuilder {
     /// }
     ///
     /// let server = Server::new()
-    ///     .with_config(AppConfig::new("My API", "1.0.0"))
+    ///     .with_config(App::new("My API", "1.0.0"))
     ///     .fallback_service(service_fn(fallback_service))
     ///     .build();
     /// ```
@@ -1001,9 +1001,9 @@ impl ServerBuilder {
         self
     }
 
-    /// Add middleware using a simpler function-based API
+    /// Add middleware using a function-based API
     ///
-    /// This is a convenience wrapper around `.layer(from_fn(...))` for easier middleware composition.
+    /// Convenience wrapper around `.layer(from_fn(...))` for easier middleware composition.
     ///
     /// # Example
     ///

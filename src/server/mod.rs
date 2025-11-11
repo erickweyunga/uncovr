@@ -33,7 +33,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let config = AppConfig::new("My API", "1.0.0");
+//!     let config = App::new("My API", "1.0.0");
 //!
 //!     Server::new()
 //!         .with_config(config)

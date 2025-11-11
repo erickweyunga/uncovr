@@ -13,7 +13,7 @@
 //! #[tokio::main]
 //! async fn main() {
 //!     Server::new()
-//!         .with_config(AppConfig::new("My API", "1.0.0"))
+//!         .with_config(App::new("My API", "1.0.0"))
 //!         .layer(RequestId::new())
 //!         .layer(RateLimit::new(100, Duration::from_secs(60)))
 //!         .register(MyEndpoint)

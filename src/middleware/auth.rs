@@ -158,19 +158,19 @@ where
     }
 }
 
-/// Helper function to create a simple token validator
+/// Create a token validator from a list of valid tokens
 ///
 /// # Example
 ///
 /// ```rust
-/// use uncovr::middleware::auth::simple_validator;
+/// use uncovr::middleware::auth::token_validator;
 ///
-/// let validator = simple_validator(vec![
+/// let validator = token_validator(vec![
 ///     "token1".to_string(),
 ///     "token2".to_string(),
 /// ]);
 /// ```
-pub fn simple_validator(
+pub fn token_validator(
     valid_tokens: Vec<String>,
 ) -> impl Fn(String) -> std::future::Ready<Result<(), String>> + Clone {
     move |token: String| {

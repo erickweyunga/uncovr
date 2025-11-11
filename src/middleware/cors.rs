@@ -3,7 +3,7 @@ use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 /// CORS (Cross-Origin Resource Sharing) middleware configuration
 ///
-/// Provides a simpler API for configuring CORS without coupling to AppConfig.
+/// Provides a simpler API for configuring CORS without coupling to App.
 /// Can be used as middleware in the server builder.
 ///
 /// # Example

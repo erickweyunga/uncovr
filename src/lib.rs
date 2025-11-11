@@ -60,8 +60,8 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let config = AppConfig::new("My API", "1.0.0")
-//!         .logging(LoggingConfig::development());
+//!     let config = App::new("My API", "1.0.0")
+//!         .logging(Logging::development());
 //!
 //!     uncovr::server::Server::new()
 //!         .with_config(config)
@@ -91,11 +91,11 @@
 //! ```rust
 //! use uncovr::prelude::*;
 //!
-//! pub fn config() -> AppConfig {
-//!     AppConfig::new("My API", "1.0.0")
+//! pub fn config() -> App {
+//!     App::new("My API", "1.0.0")
 //!         .description("My awesome API")
 //!         .environment(Environment::Development)
-//!         .logging(LoggingConfig::development())
+//!         .logging(Logging::development())
 //!         .cors(CorsConfig::development())
 //!         .docs(true)
 //! }
@@ -198,7 +198,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let config = AppConfig::new("My API", "1.0.0");
+//!     let config = App::new("My API", "1.0.0");
 //!
 //!     uncovr::server::Server::new()
 //!         .with_config(config)
@@ -227,7 +227,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let config = AppConfig::new("My API", "1.0.0");
+//!     let config = App::new("My API", "1.0.0");
 //!
 //!     uncovr::server::Server::new()
 //!         .with_config(config)
@@ -243,16 +243,16 @@
 //! Uncovr includes built-in structured logging:
 //!
 //! ```rust
-//! use uncovr::config::{LoggingConfig, LogLevel, LogFormat};
+//! use uncovr::config::{Logging, LogLevel, LogFormat};
 //!
 //! // Development: verbose, pretty output
-//! let dev_logging = LoggingConfig::development();
+//! let dev_logging = Logging::development();
 //!
 //! // Production: info level, JSON format
-//! let prod_logging = LoggingConfig::production();
+//! let prod_logging = Logging::production();
 //!
 //! // Custom configuration
-//! let custom = LoggingConfig::default()
+//! let custom = Logging::default()
 //!     .level(LogLevel::Debug)
 //!     .format(LogFormat::Pretty)
 //!     .log_requests(true);

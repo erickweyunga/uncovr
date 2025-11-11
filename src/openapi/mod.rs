@@ -57,7 +57,7 @@
 //! async fn main() {
 //!     use uncovr::server::Server;
 //!
-//!     let config = AppConfig::new("My API", "1.0.0")
+//!     let config = App::new("My API", "1.0.0")
 //!         .description("A simple API built with Uncovr")
 //!         .docs(true);
 //!

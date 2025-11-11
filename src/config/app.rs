@@ -1,11 +1,10 @@
-//! Simplified application configuration
+//! Application configuration
 //!
-//! This module provides a lightweight configuration structure focused on
-//! application metadata and basic server settings.
+//! This module provides configuration for application metadata and server settings.
 
 use serde::{Deserialize, Serialize};
 
-/// Simplified application configuration
+/// Application configuration
 ///
 /// Focuses on application metadata and basic settings.
 /// Middleware (CORS, logging, etc.) is configured separately via the server builder.
@@ -13,14 +12,13 @@ use serde::{Deserialize, Serialize};
 /// # Example
 ///
 /// ```rust
-/// use uncovr::config::AppConfig;
+/// use uncovr::config::App;
 ///
-/// let config = AppConfig::new("My API", "1.0.0")
-///     .description("My awesome API")
-///     .bind("0.0.0.0:8080");
+/// let app = App::new("My API", "1.0.0", "0.0.0.0:8080")
+///     .description("My awesome API");
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AppConfig {
+pub struct App {
     /// Application name
     pub name: String,
 
@@ -30,61 +28,61 @@ pub struct AppConfig {
     /// Application version
     pub version: String,
 
-    /// Server bind address
-    pub bind_address: String,
+    /// Bind address
+    pub bind: String,
 
-    /// Enable OpenAPI documentation
-    pub enable_docs: bool,
+    /// Enable documentation
+    pub docs: bool,
 
-    /// OpenAPI documentation UI path (default: "/docs")
+    /// Documentation path (default: "/docs")
     pub docs_path: String,
 
-    /// OpenAPI JSON specification path (default: "/openapi.json")
-    pub openapi_json_path: String,
+    /// Specification path (default: "/api.json")
+    pub spec_path: String,
 
-    /// OpenAPI server URLs
-    pub api_servers: Vec<ApiServer>,
+    /// Server URLs
+    pub servers: Vec<Server>,
 }
 
-/// OpenAPI server configuration
+/// Server configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ApiServer {
-    /// The URL of the API server
+pub struct Server {
+    /// Server URL
     pub url: String,
-    /// Description of this server instance
+    /// Server description
     pub description: String,
 }
 
-impl Default for AppConfig {
-    fn default() -> Self {
-        Self {
-            name: "Uncovr API".to_string(),
-            description: "API built with Uncovr framework".to_string(),
-            version: "1.0.0".to_string(),
-            bind_address: "127.0.0.1:3000".to_string(),
-            enable_docs: true,
-            docs_path: "/docs".to_string(),
-            openapi_json_path: "/openapi.json".to_string(),
-            api_servers: vec![],
-        }
-    }
-}
-
-impl AppConfig {
+impl App {
     /// Create a new application configuration
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - Application name
+    /// * `version` - Application version
+    /// * `bind` - Bind address (e.g., "0.0.0.0:8080" or "127.0.0.1:3000")
     ///
     /// # Example
     ///
     /// ```rust
-    /// use uncovr::config::AppConfig;
+    /// use uncovr::config::App;
     ///
-    /// let config = AppConfig::new("My API", "1.0.0");
+    /// let app = App::new("My API", "1.0.0", "0.0.0.0:8080");
     /// ```
-    pub fn new(name: impl Into<String>, version: impl Into<String>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        version: impl Into<String>,
+        bind: impl Into<String>,
+    ) -> Self {
         Self {
             name: name.into(),
             version: version.into(),
-            ..Default::default()
+            description: String::new(),
+            bind: bind.into(),
+            docs: true,
+            docs_path: "/docs".to_string(),
+            spec_path: "/api.json".to_string(),
+            servers: vec![],
         }
     }
 
@@ -93,9 +91,9 @@ impl AppConfig {
     /// # Example
     ///
     /// ```rust
-    /// use uncovr::config::AppConfig;
+    /// use uncovr::config::App;
     ///
-    /// let config = AppConfig::new("My API", "1.0.0")
+    /// let app = App::new("My API", "1.0.0", "0.0.0.0:8080")
     ///     .description("A REST API for managing users");
     /// ```
     pub fn description(mut self, description: impl Into<String>) -> Self {
@@ -103,79 +101,27 @@ impl AppConfig {
         self
     }
 
-    /// Set the bind address
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use uncovr::config::AppConfig;
-    ///
-    /// let config = AppConfig::new("My API", "1.0.0")
-    ///     .bind("0.0.0.0:8080");
-    /// ```
-    pub fn bind(mut self, address: impl Into<String>) -> Self {
-        self.bind_address = address.into();
+    /// Enable or disable documentation
+    pub fn with_docs(mut self, enable: bool) -> Self {
+        self.docs = enable;
         self
     }
 
-    /// Enable or disable OpenAPI documentation
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use uncovr::config::AppConfig;
-    ///
-    /// let config = AppConfig::new("My API", "1.0.0")
-    ///     .docs(false); // Disable docs in production
-    /// ```
-    pub fn docs(mut self, enable: bool) -> Self {
-        self.enable_docs = enable;
-        self
-    }
-
-    /// Set the path for the OpenAPI documentation UI
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use uncovr::config::AppConfig;
-    ///
-    /// let config = AppConfig::new("My API", "1.0.0")
-    ///     .docs_path("/swagger");
-    /// ```
-    pub fn docs_path(mut self, path: impl Into<String>) -> Self {
+    /// Set documentation UI path
+    pub fn with_docs_path(mut self, path: impl Into<String>) -> Self {
         self.docs_path = path.into();
         self
     }
 
-    /// Set the path for the OpenAPI JSON specification
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use uncovr::config::AppConfig;
-    ///
-    /// let config = AppConfig::new("My API", "1.0.0")
-    ///     .openapi_json_path("/api-spec.json");
-    /// ```
-    pub fn openapi_json_path(mut self, path: impl Into<String>) -> Self {
-        self.openapi_json_path = path.into();
+    /// Set specification path
+    pub fn with_spec_path(mut self, path: impl Into<String>) -> Self {
+        self.spec_path = path.into();
         self
     }
 
-    /// Add an API server URL to the OpenAPI specification
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use uncovr::config::AppConfig;
-    ///
-    /// let config = AppConfig::new("My API", "1.0.0")
-    ///     .add_server("https://api.example.com", "Production")
-    ///     .add_server("https://staging-api.example.com", "Staging");
-    /// ```
-    pub fn add_server(mut self, url: impl Into<String>, description: impl Into<String>) -> Self {
-        self.api_servers.push(ApiServer {
+    /// Add a server URL
+    pub fn server(mut self, url: impl Into<String>, description: impl Into<String>) -> Self {
+        self.servers.push(Server {
             url: url.into(),
             description: description.into(),
         });
@@ -188,35 +134,26 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_default_config() {
-        let config = AppConfig::default();
-        assert_eq!(config.name, "Uncovr API");
-        assert_eq!(config.bind_address, "127.0.0.1:3000");
-        assert!(config.enable_docs);
-    }
-
-    #[test]
-    fn test_new_config() {
-        let config = AppConfig::new("Test API", "2.0.0")
+    fn test_new_app() {
+        let app = App::new("Test API", "2.0.0", "0.0.0.0:8080")
             .description("Test description")
-            .bind("0.0.0.0:8080")
-            .docs(false);
+            .with_docs(false);
 
-        assert_eq!(config.name, "Test API");
-        assert_eq!(config.version, "2.0.0");
-        assert_eq!(config.description, "Test description");
-        assert_eq!(config.bind_address, "0.0.0.0:8080");
-        assert!(!config.enable_docs);
+        assert_eq!(app.name, "Test API");
+        assert_eq!(app.version, "2.0.0");
+        assert_eq!(app.description, "Test description");
+        assert_eq!(app.bind, "0.0.0.0:8080");
+        assert!(!app.docs);
     }
 
     #[test]
     fn test_add_server() {
-        let config = AppConfig::new("Test API", "1.0.0")
-            .add_server("https://api.example.com", "Production")
-            .add_server("https://staging.example.com", "Staging");
+        let app = App::new("Test API", "1.0.0", "127.0.0.1:3000")
+            .server("https://api.example.com", "Production")
+            .server("https://staging.example.com", "Staging");
 
-        assert_eq!(config.api_servers.len(), 2);
-        assert_eq!(config.api_servers[0].url, "https://api.example.com");
-        assert_eq!(config.api_servers[1].description, "Staging");
+        assert_eq!(app.servers.len(), 2);
+        assert_eq!(app.servers[0].url, "https://api.example.com");
+        assert_eq!(app.servers[1].description, "Staging");
     }
 }
