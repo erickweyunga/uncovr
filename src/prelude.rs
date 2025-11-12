@@ -11,7 +11,6 @@ pub use crate::server::params::{Path, Query};
 pub use crate::server::{ApiKeyLocation, Endpoint, HttpMethod, Meta, Route, SecurityScheme};
 
 // Core traits
-pub use crate::openapi::JsonSchema;
 pub use async_trait::async_trait;
 pub use serde::{Deserialize, Serialize};
 

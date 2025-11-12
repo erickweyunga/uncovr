@@ -12,13 +12,13 @@ use aide::openapi::{
     QueryStyle, ReferenceOr, SchemaObject, SecurityRequirement,
     SecurityScheme as OpenApiSecurityScheme,
 };
-use axum::{Extension, async_trait, body::Body};
+use async_trait::async_trait;
+use axum::{Extension, body::Body};
 use axum::{
     extract::FromRequestParts,
     http::{Request, Response, request::Parts},
 };
 use http::Extensions;
-use schemars::schema::{InstanceType, Schema, SchemaObject as SchemarsSchemaObject};
 use tower::Service;
 use tower_http::trace::{MakeSpan, OnResponse, TraceLayer};
 
@@ -250,10 +250,8 @@ fn param_info_to_query_param(param: &ParamInfo) -> ReferenceOr<Parameter> {
             required: param.required,
             deprecated: None,
             format: ParameterSchemaOrContent::Schema(SchemaObject {
-                json_schema: Schema::Object(SchemarsSchemaObject {
-                    instance_type: Some(InstanceType::String.into()),
-                    ..Default::default()
-                }),
+                json_schema: serde_json::from_value(serde_json::json!({ "type": "string" }))
+                    .unwrap(),
                 external_docs: None,
                 example: None,
             }),

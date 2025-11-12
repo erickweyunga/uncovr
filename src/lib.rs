@@ -316,6 +316,10 @@ pub mod tower {
     pub use tower::*;
 }
 
+/// Re-exports for traits used in public API
+pub use async_trait;
+pub use serde;
+
 #[cfg(test)]
 mod tests {
     use crate::context::Context;
