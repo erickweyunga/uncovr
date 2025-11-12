@@ -78,4 +78,21 @@ mod docs;
 pub use aide::openapi::OpenApi;
 pub use config::OpenApiConfig;
 pub use docs::{serve_docs, serve_scalar_ui};
+
+/// Re-export of JsonSchema trait for deriving OpenAPI schemas.
+///
+/// Users should derive this on request and response types.
+/// Access via `uncovr::openapi::JsonSchema` or `uncovr::schemars::JsonSchema`.
+///
+/// # Example
+///
+/// ```ignore
+/// use uncovr::openapi::JsonSchema;
+/// use serde::{Deserialize, Serialize};
+///
+/// #[derive(Deserialize, JsonSchema)]
+/// pub struct CreateUserRequest {
+///     pub name: String,
+/// }
+/// ```
 pub use schemars::JsonSchema;
